@@ -91,11 +91,18 @@ function serializeNode(
   doc: Document,
   blockClass: string | RegExp,
 ): serializedNode | false {
+  // Only record root id when document object is not the base document
+  let rootId: number | undefined;
+  if (((doc as unknown) as INode).__sn) {
+    const docId = ((doc as unknown) as INode).__sn.id;
+    rootId = docId === 1 ? undefined : docId;
+  }
   switch (n.nodeType) {
     case n.DOCUMENT_NODE:
       return {
         type: NodeType.Document,
         childNodes: [],
+        rootId,
       };
     case n.DOCUMENT_TYPE_NODE:
       return {
@@ -103,6 +110,7 @@ function serializeNode(
         name: (n as DocumentType).name,
         publicId: (n as DocumentType).publicId,
         systemId: (n as DocumentType).systemId,
+        rootId,
       };
     case n.ELEMENT_NODE:
       let needBlock = false;
@@ -190,6 +198,7 @@ function serializeNode(
         childNodes: [],
         isSVG: isSVGElement(n as Element) || undefined,
         needBlock,
+        rootId,
       };
     case n.TEXT_NODE:
       // The parent node may not be a html element which has a tagName attribute.
@@ -208,16 +217,19 @@ function serializeNode(
         type: NodeType.Text,
         textContent: textContent || '',
         isStyle,
+        rootId,
       };
     case n.CDATA_SECTION_NODE:
       return {
         type: NodeType.CDATA,
         textContent: '',
+        rootId,
       };
     case n.COMMENT_NODE:
       return {
         type: NodeType.Comment,
         textContent: (n as Comment).textContent || '',
+        rootId,
       };
     default:
       return false;
@@ -262,6 +274,23 @@ export function serializeNodeWithId(
       );
       if (serializedChildNode) {
         serializedNode.childNodes.push(serializedChildNode);
+      }
+    }
+  }
+  if (
+    serializedNode.type === NodeType.Element &&
+    serializedNode.tagName === 'iframe'
+  ) {
+    const iframeDoc = (n as HTMLIFrameElement).contentDocument;
+    if (iframeDoc) {
+      const serializedIframeNode = serializeNodeWithId(
+        iframeDoc,
+        iframeDoc,
+        map,
+        blockClass,
+      );
+      if (serializedIframeNode) {
+        serializedNode.childNodes.push(serializedIframeNode);
       }
     }
   }
