@@ -105,9 +105,38 @@ describe('integration tests', function(this: ISuite) {
       page.on('console', msg => console.log(msg.text()));
       await page.goto(`http://localhost:3030/html`);
       await page.setContent(html.src);
+      await page.waitFor(100);
       const rebuildHtml = (await page.evaluate(`${this.code}
         const x = new XMLSerializer();
         const [snap] = rrweb.snapshot(document);
+        x.serializeToString(rrweb.rebuild(snap, document)[0]);
+      `)).replace(/\n\n/g, '');
+      const result = matchSnapshot(rebuildHtml, __filename, title);
+      assert(result.pass, result.pass ? '' : result.report());
+    }).timeout(5000);
+  }
+
+  for (const html of htmls) {
+    const title = '[iframe]: ' + html.filePath;
+    it(title, async () => {
+      const page: puppeteer.Page = await this.browser.newPage();
+      // console for debug
+      // tslint:disable-next-line: no-console
+      page.on('console', msg => console.log(msg.text()));
+      await page.goto(`http://localhost:3030/html`);
+      await page.setContent(`
+        <html>
+          <body>
+            <iframe id="frame" src='/html/${html.filePath}'>
+            </iframe>
+          </body>
+        </html>
+      `);
+      await page.waitFor(100);
+      const rebuildHtml = (await page.evaluate(`${this.code}
+        const x = new XMLSerializer();
+        const doc = document.querySelector('#frame').contentDocument
+        const [snap] = rrweb.snapshot(doc);
         x.serializeToString(rrweb.rebuild(snap, document)[0]);
       `)).replace(/\n\n/g, '');
       const result = matchSnapshot(rebuildHtml, __filename, title);
