@@ -71,4 +71,13 @@ export type idNodeMap = {
   [key: number]: INode;
 };
 
-export type CallbackArray<T = Function> = T[];
+export type callbackArray<T = Function> = T[];
+
+export type snapshotOptions = {
+  blockClass?: string | RegExp;
+  onVisit?: (n: INode) => void;
+};
+
+export type serializeOptions = snapshotOptions & {
+  skipChild?: boolean;
+};

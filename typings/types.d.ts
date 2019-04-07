@@ -40,7 +40,9 @@ export declare type commentNode = {
     type: NodeType.Comment;
     textContent: string;
 };
-export declare type serializedNode = documentNode | documentTypeNode | elementNode | textNode | cdataNode | commentNode;
+export declare type serializedNode = (documentNode | documentTypeNode | elementNode | textNode | cdataNode | commentNode) & {
+    rootId?: number;
+};
 export declare type serializedNodeWithId = serializedNode & {
     id: number;
 };
@@ -52,4 +54,12 @@ export interface INode extends Node {
 }
 export declare type idNodeMap = {
     [key: number]: INode;
+};
+export declare type callbackArray<T = Function> = T[];
+export declare type snapshotOptions = {
+    blockClass?: string | RegExp;
+    onVisit?: (n: INode) => void;
+};
+export declare type serializeOptions = snapshotOptions & {
+    skipChild?: boolean;
 };

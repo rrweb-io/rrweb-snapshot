@@ -5,7 +5,7 @@ import {
   elementNode,
   idNodeMap,
   INode,
-  CallbackArray,
+  callbackArray,
 } from './types';
 
 const tagMap: tagMap = {
@@ -147,7 +147,7 @@ function buildIframe(
   iframe: HTMLIFrameElement,
   childNodes: serializedNodeWithId[],
   map: idNodeMap,
-  cbs: CallbackArray,
+  cbs: callbackArray,
 ) {
   const targetDoc = iframe.contentDocument!;
   for (const childN of childNodes) {
@@ -159,7 +159,7 @@ export function buildNodeWithSN(
   n: serializedNodeWithId,
   doc: Document,
   map: idNodeMap,
-  cbs: CallbackArray,
+  cbs: callbackArray,
   skipChild = false,
 ): [INode | null, serializedNodeWithId[]] {
   let node = buildNode(n, doc);
@@ -221,7 +221,7 @@ function rebuild(
   doc: Document,
 ): [Node | null, idNodeMap] {
   const idNodeMap: idNodeMap = {};
-  const callbackArray: CallbackArray = [];
+  const callbackArray: callbackArray = [];
   const [node] = buildNodeWithSN(n, doc, idNodeMap, callbackArray);
   callbackArray.forEach(f => f());
   return [node, idNodeMap];
