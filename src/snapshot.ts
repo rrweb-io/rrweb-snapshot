@@ -235,7 +235,7 @@ function serializeNode(
 }
 
 export function serializeNodeWithId(
-  n: Node,
+  n: Node | INode,
   doc: Document,
   map: idNodeMap,
   blockClass: string | RegExp,
@@ -248,17 +248,16 @@ export function serializeNodeWithId(
     console.warn(n, 'not serialized');
     return null;
   }
-  const nAsINode = n as INode
   let id
   // Try to reuse the previous id
-  if (nAsINode.__sn) {
-    id = nAsINode.__sn.id
+  if ('__sn' in n) {
+    id = n.__sn.id
   } else {
     id = genId()
   }
   const serializedNode = Object.assign(_serializedNode, { id });
-  nAsINode.__sn = serializedNode;
-  map[id] = n as INode;
+  (n as INode).__sn = serializedNode;
+  map[id] = (n as INode);
   let recordChild = !skipChild;
   if (serializedNode.type === NodeType.Element) {
     recordChild = recordChild && !serializedNode.needBlock;
