@@ -130,7 +130,7 @@ function serializeNode(
       let attributes: attributes = {};
       for (const { name, value } of Array.from((n as HTMLElement).attributes)) {
         // relative path in attribute
-        if (name === 'src' || name === 'href') {
+        if (name === 'src' || name === 'href' || name == 'srcset') {
           attributes[name] = absoluteToDoc(doc, value);
         } else if (name === 'style') {
           attributes[name] = absoluteToStylesheet(value, location.href);
