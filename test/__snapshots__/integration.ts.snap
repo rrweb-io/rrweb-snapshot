@@ -182,7 +182,7 @@ exports[`[html file]: with-relative-res.html 1`] = `
 <body>
   <a href=\\"http://localhost:3030/basic.html\\"></a>
   <img src=\\"http://localhost:3030/a.jpg\\" alt=\\"\\" srcset=\\"\\" />
-  <img src=\\"http://localhost:3030/a.jpg\\" alt=\\"\\" srcset=\\"http://localhost:3030/\\" /></body></html>"
+  <img src=\\"http://localhost:3030/a.jpg\\" alt=\\"\\" srcset=\\"http://localhost:3030/a.jpg\\" /></body></html>"
 `;
 
 exports[`[html file]: with-script.html 1`] = `
