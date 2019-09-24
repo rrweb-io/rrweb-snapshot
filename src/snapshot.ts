@@ -86,6 +86,9 @@ export function absoluteToStylesheet(cssText: string, href: string): string {
 }
 
 function absoluteToDoc(doc: Document, attributeValue: string): string {
+  if (attributeValue.trim() === ""){
+    return attributeValue
+  }
   const a: HTMLAnchorElement = doc.createElement('a');
   a.href = attributeValue;
   return a.href;
