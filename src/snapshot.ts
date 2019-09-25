@@ -104,7 +104,7 @@ function getAbsoluteSrcsetString(doc: Document, attributeValue: string) {
       resultingSrcsetString += absUrl
       resultingSrcsetString +=  " "
       resultingSrcsetString +=  urlAndSize[1]
-    }else if(urlAndSize.length == 1){
+    } else if(urlAndSize.length == 1){
       const absUrl = absoluteToDoc(doc, urlAndSize[0])
       resultingSrcsetString += absUrl
     }
