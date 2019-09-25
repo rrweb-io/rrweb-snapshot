@@ -105,7 +105,8 @@ function getAbsoluteSrcsetString(doc: Document, attributeValue: string) {
       resultingSrcsetString +=  " "
       resultingSrcsetString +=  urlAndSize[1]
     }else if(urlAndSize.length == 1){
-      // bad srcset input when its a number as the first 
+      // bad srcset input when its size rather than url
+      // as only input
       if(!isNaN(parseInt(urlAndSize[0]))) {
         return
       }
