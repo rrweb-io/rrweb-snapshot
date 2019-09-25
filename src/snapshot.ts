@@ -105,12 +105,6 @@ function getAbsoluteSrcsetString(doc: Document, attributeValue: string) {
       resultingSrcsetString +=  " "
       resultingSrcsetString +=  urlAndSize[1]
     }else if(urlAndSize.length == 1){
-      // bad srcset input when its size rather than url
-      // as only input
-      if(!isNaN(parseInt(urlAndSize[0]))) {
-        return
-      }
-      // if its a valid input we can safely parse it
       const absUrl = absoluteToDoc(doc, urlAndSize[0])
       resultingSrcsetString += absUrl
     }
