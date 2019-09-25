@@ -122,6 +122,16 @@ function buildNode(
           if (tagName === 'iframe' && name === 'src') {
             continue;
           }
+          if (tagName === 'canvas' && name === '_dataURL') {
+            const image = document.createElement('img')
+            image.src = value
+            image.onload = () => {
+              const ctx = (node as HTMLCanvasElement).getContext('2d')
+              if (ctx) {
+                ctx.drawImage(image, 0, 0, image.width, image.height)
+              }
+            }
+          }
           try {
             if (n.isSVG && name === 'xlink:href') {
               node.setAttributeNS('http://www.w3.org/1999/xlink', name, value);

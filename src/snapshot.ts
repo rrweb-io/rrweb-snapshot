@@ -193,6 +193,10 @@ function serializeNode(
           attributes.selected = (n as HTMLOptionElement).selected;
         }
       }
+      // canvas image data
+      if (tagName === 'canvas') {
+        attributes._dataURL = (n as HTMLCanvasElement).toDataURL()
+      }
       if (needBlock) {
         const { width, height } = (n as HTMLElement).getBoundingClientRect();
         attributes.rr_width = `${width}px`;
