@@ -89,30 +89,24 @@ function getAbsoluteSrcsetString(doc: Document, attributeValue: string) {
   if(attributeValue.trim() === "") {
     return attributeValue
   }
-  let resultingSrcsetString = ""
 
+  const srcsetValues = attributeValue.split(",")
   // srcset attributes is defined as such:
   // srcset = "url size,url1 size1"
-  const srcsetValues = attributeValue.split(",")
-  srcsetValues.forEach((srcItem, i) => {
-    // removing all but middle spaces
-    const trimmedSrcItem = srcItem.trimLeft().trimRight()
-    const urlAndSize = trimmedSrcItem.split(" ")
-    // this means we have both 0:url and 1:size
-    if (urlAndSize.length == 2) {
-      const absUrl = absoluteToDoc(doc, urlAndSize[0])
-      resultingSrcsetString += absUrl
-      resultingSrcsetString +=  " "
-      resultingSrcsetString +=  urlAndSize[1]
-    } else if(urlAndSize.length == 1){
-      const absUrl = absoluteToDoc(doc, urlAndSize[0])
-      resultingSrcsetString += absUrl
-    }
-
-    if (i !== srcsetValues.length -1) {
-      resultingSrcsetString +=  ","
-    }
-  })
+  const resultingSrcsetString = srcsetValues.map((srcItem) => {
+       // removing all but middle spaces
+       const trimmedSrcItem = srcItem.trimLeft().trimRight()
+       const urlAndSize = trimmedSrcItem.split(" ")
+       // this means we have both 0:url and 1:size
+       if (urlAndSize.length === 2) {
+         const absUrl = absoluteToDoc(doc, urlAndSize[0])
+         return `${absUrl} ${urlAndSize[1]}`
+       } else if(urlAndSize.length === 1){
+         const absUrl = absoluteToDoc(doc, urlAndSize[0])
+         return `${absUrl}`
+       }
+       return ""
+  }).join(',')
 
   return resultingSrcsetString
 }
