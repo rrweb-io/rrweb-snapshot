@@ -195,7 +195,7 @@ function serializeNode(
       }
       // canvas image data
       if (tagName === 'canvas') {
-        attributes._dataURL = (n as HTMLCanvasElement).toDataURL()
+        attributes.rr_dataURL = (n as HTMLCanvasElement).toDataURL()
       }
       if (needBlock) {
         const { width, height } = (n as HTMLElement).getBoundingClientRect();

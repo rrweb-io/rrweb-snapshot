@@ -122,7 +122,7 @@ function buildNode(
           if (tagName === 'iframe' && name === 'src') {
             continue;
           }
-          if (tagName === 'canvas' && name === '_dataURL') {
+          if (tagName === 'canvas' && name === 'rr_dataURL') {
             const image = document.createElement('img')
             image.src = value
             image.onload = () => {
