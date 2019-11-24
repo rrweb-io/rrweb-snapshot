@@ -82,13 +82,14 @@ function absoluteToStylesheet(cssText, href) {
     });
 }
 function getAbsoluteSrcsetString(doc, attributeValue) {
-    if (attributeValue.trim() === "") {
+    if (attributeValue.trim() === '') {
         return attributeValue;
     }
-    var srcsetValues = attributeValue.split(",");
-    var resultingSrcsetString = srcsetValues.map(function (srcItem) {
+    var srcsetValues = attributeValue.split(',');
+    var resultingSrcsetString = srcsetValues
+        .map(function (srcItem) {
         var trimmedSrcItem = srcItem.trimLeft().trimRight();
-        var urlAndSize = trimmedSrcItem.split(" ");
+        var urlAndSize = trimmedSrcItem.split(' ');
         if (urlAndSize.length === 2) {
             var absUrl = absoluteToDoc(doc, urlAndSize[0]);
             return absUrl + " " + urlAndSize[1];
@@ -97,12 +98,13 @@ function getAbsoluteSrcsetString(doc, attributeValue) {
             var absUrl = absoluteToDoc(doc, urlAndSize[0]);
             return "" + absUrl;
         }
-        return "";
-    }).join(',');
+        return '';
+    })
+        .join(',');
     return resultingSrcsetString;
 }
 function absoluteToDoc(doc, attributeValue) {
-    if (attributeValue.trim() === "") {
+    if (attributeValue.trim() === '') {
         return attributeValue;
     }
     var a = doc.createElement('a');
@@ -111,6 +113,20 @@ function absoluteToDoc(doc, attributeValue) {
 }
 function isSVGElement(el) {
     return el.tagName === 'svg' || el instanceof SVGElement;
+}
+function transformAttribute(doc, name, value) {
+    if (name === 'src' || name === 'href') {
+        return absoluteToDoc(doc, value);
+    }
+    else if (name === 'srcset') {
+        return getAbsoluteSrcsetString(doc, value);
+    }
+    else if (name === 'style') {
+        return absoluteToStylesheet(value, location.href);
+    }
+    else {
+        return value;
+    }
 }
 function serializeNode(n, doc, blockClass, inlineStylesheet, maskAllInputs) {
     switch (n.nodeType) {
@@ -142,18 +158,7 @@ function serializeNode(n, doc, blockClass, inlineStylesheet, maskAllInputs) {
             var attributes_1 = {};
             for (var _i = 0, _a = Array.from(n.attributes); _i < _a.length; _i++) {
                 var _b = _a[_i], name = _b.name, value = _b.value;
-                if (name === 'src' || name === 'href') {
-                    attributes_1[name] = absoluteToDoc(doc, value);
-                }
-                else if (name == 'srcset') {
-                    attributes_1[name] = getAbsoluteSrcsetString(doc, value);
-                }
-                else if (name === 'style') {
-                    attributes_1[name] = absoluteToStylesheet(value, location.href);
-                }
-                else {
-                    attributes_1[name] = value;
-                }
+                attributes_1[name] = transformAttribute(doc, name, value);
             }
             if (tagName === 'link' && inlineStylesheet) {
                 var stylesheet = Array.from(doc.styleSheets).find(function (s) {
@@ -913,4 +918,4 @@ function rebuild(n, doc, HACK_CSS) {
     return [buildNodeWithSN(n, doc, idNodeMap, false, HACK_CSS), idNodeMap];
 }
 
-export { snapshot, serializeNodeWithId, rebuild, buildNodeWithSN, addHoverClass, NodeType };
+export { snapshot, serializeNodeWithId, rebuild, buildNodeWithSN, addHoverClass, transformAttribute, NodeType };
