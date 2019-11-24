@@ -86,34 +86,36 @@ export function absoluteToStylesheet(cssText: string, href: string): string {
 }
 
 function getAbsoluteSrcsetString(doc: Document, attributeValue: string) {
-  if(attributeValue.trim() === "") {
-    return attributeValue
+  if (attributeValue.trim() === '') {
+    return attributeValue;
   }
 
-  const srcsetValues = attributeValue.split(",")
+  const srcsetValues = attributeValue.split(',');
   // srcset attributes is defined as such:
   // srcset = "url size,url1 size1"
-  const resultingSrcsetString = srcsetValues.map((srcItem) => {
-       // removing all but middle spaces
-       const trimmedSrcItem = srcItem.trimLeft().trimRight()
-       const urlAndSize = trimmedSrcItem.split(" ")
-       // this means we have both 0:url and 1:size
-       if (urlAndSize.length === 2) {
-         const absUrl = absoluteToDoc(doc, urlAndSize[0])
-         return `${absUrl} ${urlAndSize[1]}`
-       } else if(urlAndSize.length === 1){
-         const absUrl = absoluteToDoc(doc, urlAndSize[0])
-         return `${absUrl}`
-       }
-       return ""
-  }).join(',')
+  const resultingSrcsetString = srcsetValues
+    .map(srcItem => {
+      // removing all but middle spaces
+      const trimmedSrcItem = srcItem.trimLeft().trimRight();
+      const urlAndSize = trimmedSrcItem.split(' ');
+      // this means we have both 0:url and 1:size
+      if (urlAndSize.length === 2) {
+        const absUrl = absoluteToDoc(doc, urlAndSize[0]);
+        return `${absUrl} ${urlAndSize[1]}`;
+      } else if (urlAndSize.length === 1) {
+        const absUrl = absoluteToDoc(doc, urlAndSize[0]);
+        return `${absUrl}`;
+      }
+      return '';
+    })
+    .join(',');
 
-  return resultingSrcsetString
+  return resultingSrcsetString;
 }
 
-function absoluteToDoc(doc: Document, attributeValue: string): string {
-  if (attributeValue.trim() === ""){
-    return attributeValue
+export function absoluteToDoc(doc: Document, attributeValue: string): string {
+  if (attributeValue.trim() === '') {
+    return attributeValue;
   }
   const a: HTMLAnchorElement = doc.createElement('a');
   a.href = attributeValue;
@@ -122,6 +124,23 @@ function absoluteToDoc(doc: Document, attributeValue: string): string {
 
 function isSVGElement(el: Element): boolean {
   return el.tagName === 'svg' || el instanceof SVGElement;
+}
+
+export function transformAttribute(
+  doc: Document,
+  name: string,
+  value: string,
+): string {
+  // relative path in attribute
+  if (name === 'src' || name === 'href') {
+    return absoluteToDoc(doc, value);
+  } else if (name === 'srcset') {
+    return getAbsoluteSrcsetString(doc, value);
+  } else if (name === 'style') {
+    return absoluteToStylesheet(value, location.href);
+  } else {
+    return value;
+  }
 }
 
 function serializeNode(
@@ -158,16 +177,7 @@ function serializeNode(
       const tagName = (n as HTMLElement).tagName.toLowerCase();
       let attributes: attributes = {};
       for (const { name, value } of Array.from((n as HTMLElement).attributes)) {
-        // relative path in attribute
-        if (name === 'src' || name === 'href') {
-          attributes[name] = absoluteToDoc(doc, value);
-        } else if (name == 'srcset') {
-          attributes[name] = getAbsoluteSrcsetString(doc, value)
-        } else if (name === 'style') {
-          attributes[name] = absoluteToStylesheet(value, location.href);
-        } else {
-          attributes[name] = value;
-        }
+        attributes[name] = transformAttribute(doc, name, value);
       }
       // remote css
       if (tagName === 'link' && inlineStylesheet) {
@@ -226,7 +236,7 @@ function serializeNode(
       }
       // canvas image data
       if (tagName === 'canvas') {
-        attributes.rr_dataURL = (n as HTMLCanvasElement).toDataURL()
+        attributes.rr_dataURL = (n as HTMLCanvasElement).toDataURL();
       }
       if (needBlock) {
         const { width, height } = (n as HTMLElement).getBoundingClientRect();
