@@ -13,6 +13,20 @@ function genId(): number {
   return _id++;
 }
 
+function getValidTagName(tagName: string): string {
+  let processedTagName = tagName.toLowerCase().trim();
+  processedTagName = processedTagName.replace(/[^a-z]/gi, '');
+
+  if (processedTagName === '') {
+    // if the tag name is odd and we cannot extract
+    // anything from the string, then we return a
+    // generic div
+    return 'div';
+  }
+
+  return processedTagName;
+}
+
 function getCssRulesString(s: CSSStyleSheet): string | null {
   try {
     const rules = s.rules || s.cssRules;
@@ -174,7 +188,7 @@ function serializeNode(
           }
         });
       }
-      const tagName = (n as HTMLElement).tagName.toLowerCase();
+      const tagName = getValidTagName((n as HTMLElement).tagName);
       let attributes: attributes = {};
       for (const { name, value } of Array.from((n as HTMLElement).attributes)) {
         attributes[name] = transformAttribute(doc, name, value);
@@ -205,8 +219,9 @@ function serializeNode(
           ''
         ).trim().length
       ) {
-        const cssText = getCssRulesString((n as HTMLStyleElement)
-          .sheet as CSSStyleSheet);
+        const cssText = getCssRulesString(
+          (n as HTMLStyleElement).sheet as CSSStyleSheet,
+        );
         if (cssText) {
           attributes._cssText = absoluteToStylesheet(cssText, location.href);
         }
