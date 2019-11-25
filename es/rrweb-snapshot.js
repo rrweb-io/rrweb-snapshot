@@ -12,6 +12,14 @@ var _id = 1;
 function genId() {
     return _id++;
 }
+function getValidTagName(tagName) {
+    var processedTagName = tagName.toLowerCase().trim();
+    processedTagName = processedTagName.replace(/[^a-z]/gi, '');
+    if (processedTagName === '') {
+        return 'div';
+    }
+    return processedTagName;
+}
 function getCssRulesString(s) {
     try {
         var rules = s.rules || s.cssRules;
@@ -154,7 +162,7 @@ function serializeNode(n, doc, blockClass, inlineStylesheet, maskAllInputs) {
                     }
                 });
             }
-            var tagName = n.tagName.toLowerCase();
+            var tagName = getValidTagName(n.tagName);
             var attributes_1 = {};
             for (var _i = 0, _a = Array.from(n.attributes); _i < _a.length; _i++) {
                 var _b = _a[_i], name = _b.name, value = _b.value;
@@ -176,8 +184,7 @@ function serializeNode(n, doc, blockClass, inlineStylesheet, maskAllInputs) {
                 !(n.innerText ||
                     n.textContent ||
                     '').trim().length) {
-                var cssText = getCssRulesString(n
-                    .sheet);
+                var cssText = getCssRulesString(n.sheet);
                 if (cssText) {
                     attributes_1._cssText = absoluteToStylesheet(cssText, location.href);
                 }
