@@ -8,16 +8,16 @@ import {
 } from './types';
 
 let _id = 1;
+const symbolAndNumberRegex = RegExp('[^a-z]');
 
 function genId(): number {
   return _id++;
 }
 
 function getValidTagName(tagName: string): string {
-  let processedTagName = tagName.toLowerCase().trim();
-  processedTagName = processedTagName.replace(/[^a-z]/gi, '');
+  const processedTagName = tagName.toLowerCase().trim();
 
-  if (processedTagName === '') {
+  if (symbolAndNumberRegex.test(processedTagName)) {
     // if the tag name is odd and we cannot extract
     // anything from the string, then we return a
     // generic div
