@@ -269,6 +269,7 @@ function serializeNode(
         const { width, height } = (n as HTMLElement).getBoundingClientRect();
         attributes.rr_width = `${width}px`;
         attributes.rr_height = `${height}px`;
+        attributes.rr_background = 'grey';
       }
       return {
         type: NodeType.Element,

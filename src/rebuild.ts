@@ -152,6 +152,9 @@ function buildNode(
           if (name === 'rr_height') {
             (node as HTMLElement).style.height = value;
           }
+          if (name === 'rr_background') {
+            (node as HTMLElement).style.background = value;
+          }
           if (name === 'rr_mediaState') {
             switch (value) {
               case 'played':
