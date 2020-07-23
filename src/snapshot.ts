@@ -332,6 +332,7 @@ export function serializeNodeWithId(
   inlineStylesheet = true,
   maskInputOptions?: MaskInputOptions,
   recordCanvas?: boolean,
+  slimDOM = false,
 ): serializedNodeWithId | null {
   const _serializedNode = serializeNode(
     n,
@@ -345,7 +346,12 @@ export function serializeNodeWithId(
     // TODO: dev only
     console.warn(n, 'not serialized');
     return null;
+  } else if (slimDOM &&
+      ((_serializedNode.type === NodeType.Element && _serializedNode.tagName == 'script')
+       || _serializedNode.type === NodeType.Comment)) {
+    return null;
   }
+
   let id;
   // Try to reuse the previous id
   if ('__sn' in n) {
@@ -377,6 +383,7 @@ export function serializeNodeWithId(
         inlineStylesheet,
         maskInputOptions,
         recordCanvas,
+        slimDOM,
       );
       if (serializedChildNode) {
         serializedNode.childNodes.push(serializedChildNode);
@@ -392,6 +399,7 @@ function snapshot(
   inlineStylesheet = true,
   maskAllInputsOrOptions: boolean | MaskInputOptions,
   recordCanvas?: boolean,
+  slimDOM = false,
 ): [serializedNodeWithId | null, idNodeMap] {
   const idNodeMap: idNodeMap = {};
   const maskInputOptions: MaskInputOptions =
@@ -426,6 +434,7 @@ function snapshot(
       inlineStylesheet,
       maskInputOptions,
       recordCanvas,
+      slimDOM,
     ),
     idNodeMap,
   ];
