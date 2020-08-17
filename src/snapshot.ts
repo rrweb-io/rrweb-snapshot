@@ -349,6 +349,7 @@ export function serializeNodeWithId(
   } else if (slimDOM &&
       ((_serializedNode.type === NodeType.Element && _serializedNode.tagName == 'script')
        || _serializedNode.type === NodeType.Comment)) {
+    (n as INode).__sn = {id: -2, ignored: true};
     return null;
   }
 
