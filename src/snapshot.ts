@@ -346,22 +346,24 @@ export function serializeNodeWithId(
     // TODO: dev only
     console.warn(n, 'not serialized');
     return null;
-  } else if (slimDOM &&
-      ((_serializedNode.type === NodeType.Element && _serializedNode.tagName == 'script')
-       || _serializedNode.type === NodeType.Comment)) {
-    (n as INode).__sn = {id: -2, ignored: true};
-    return null;
   }
 
   let id;
   // Try to reuse the previous id
   if ('__sn' in n) {
     id = n.__sn.id;
+  } else if (slimDOM &&
+      ((_serializedNode.type === NodeType.Element && _serializedNode.tagName == 'script')
+       || _serializedNode.type === NodeType.Comment)) {
+    id = -2;  // mark as ignored
   } else {
     id = genId();
   }
   const serializedNode = Object.assign(_serializedNode, { id });
   (n as INode).__sn = serializedNode;
+  if (id === -2) {
+    return null;  // slimDOM
+  }
   map[id] = n as INode;
   let recordChild = !skipChild;
   if (serializedNode.type === NodeType.Element) {
