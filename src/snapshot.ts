@@ -357,6 +357,7 @@ export function serializeNodeWithId(
     id = n.__sn.id;
   } else if (slimDOM && (
     (_serializedNode.type === NodeType.Element && _serializedNode.tagName == 'script')
+      || (_serializedNode.type === NodeType.Element && _serializedNode.tagName == 'link' && _serializedNode.attributes.rel == 'preload' && _serializedNode.attributes['as'] == 'script')
       || _serializedNode.type === NodeType.Comment
       || (!preserveWhiteSpace &&
           _serializedNode.type === NodeType.Text &&
