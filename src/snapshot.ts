@@ -333,6 +333,7 @@ export function serializeNodeWithId(
   maskInputOptions?: MaskInputOptions,
   recordCanvas?: boolean,
   slimDOM = false,
+  preserveWhiteSpace = true,
 ): serializedNodeWithId | null {
   const _serializedNode = serializeNode(
     n,
@@ -352,9 +353,15 @@ export function serializeNodeWithId(
   // Try to reuse the previous id
   if ('__sn' in n) {
     id = n.__sn.id;
-  } else if (slimDOM &&
-      ((_serializedNode.type === NodeType.Element && _serializedNode.tagName == 'script')
-       || _serializedNode.type === NodeType.Comment)) {
+  } else if (slimDOM && (
+    (_serializedNode.type === NodeType.Element && _serializedNode.tagName == 'script')
+      || _serializedNode.type === NodeType.Comment
+      || (!preserveWhiteSpace &&
+          _serializedNode.type === NodeType.Text &&
+          !_serializedNode.isStyle &&
+          !_serializedNode.textContent.replace(/^\s+|\s+$/gm,'').length
+         )
+  )) {
     id = -2;  // mark as ignored
   } else {
     id = genId();
@@ -376,6 +383,13 @@ export function serializeNodeWithId(
       serializedNode.type === NodeType.Element) &&
     recordChild
   ) {
+    if (slimDOM &&
+        (
+      (_serializedNode.type === NodeType.Element && _serializedNode.tagName == 'head')
+      // would impede performance: || getComputedStyle(n)['white-space'] === 'normal'
+    )) {
+      preserveWhiteSpace = false;
+    }
     for (const childN of Array.from(n.childNodes)) {
       const serializedChildNode = serializeNodeWithId(
         childN,
@@ -387,6 +401,7 @@ export function serializeNodeWithId(
         maskInputOptions,
         recordCanvas,
         slimDOM,
+        preserveWhiteSpace,
       );
       if (serializedChildNode) {
         serializedNode.childNodes.push(serializedChildNode);
