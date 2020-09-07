@@ -11,6 +11,8 @@ import {
 let _id = 1;
 const tagNameRegex = RegExp('[^a-z1-6-_]');
 
+export const IGNORED_NODE = -2;
+
 function genId(): number {
   return _id++;
 }
@@ -362,13 +364,13 @@ export function serializeNodeWithId(
           !_serializedNode.textContent.replace(/^\s+|\s+$/gm,'').length
          )
   )) {
-    id = -2;  // mark as ignored
+    id = IGNORED_NODE;
   } else {
     id = genId();
   }
   const serializedNode = Object.assign(_serializedNode, { id });
   (n as INode).__sn = serializedNode;
-  if (id === -2) {
+  if (id === IGNORED_NODE) {
     return null;  // slimDOM
   }
   map[id] = n as INode;
