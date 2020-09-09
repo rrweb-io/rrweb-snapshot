@@ -6,6 +6,7 @@ import {
   INode,
   idNodeMap,
   MaskInputOptions,
+  SlimDOMOptions,
 } from './types';
 
 let _id = 1;
@@ -333,8 +334,8 @@ export function serializeNodeWithId(
   skipChild = false,
   inlineStylesheet = true,
   maskInputOptions?: MaskInputOptions,
+  slimDOMOptions: SlimDOMOptions = {},
   recordCanvas?: boolean,
-  slimDOM = false,
   preserveWhiteSpace = true,
 ): serializedNodeWithId | null {
   const _serializedNode = serializeNode(
@@ -355,16 +356,18 @@ export function serializeNodeWithId(
   // Try to reuse the previous id
   if ('__sn' in n) {
     id = n.__sn.id;
-  } else if (slimDOM && (
-    (_serializedNode.type === NodeType.Element && _serializedNode.tagName == 'script')
-      || (_serializedNode.type === NodeType.Element && _serializedNode.tagName == 'link' && _serializedNode.attributes.rel == 'preload' && _serializedNode.attributes['as'] == 'script')
-      || _serializedNode.type === NodeType.Comment
+  } else if (
+    (slimDOMOptions.script && _serializedNode.type === NodeType.Element &&
+     (_serializedNode.tagName == 'script' ||
+      (_serializedNode.tagName == 'link' && _serializedNode.attributes.rel == 'preload' && _serializedNode.attributes['as'] == 'script')
+     ))
+      || (slimDOMOptions.comment && _serializedNode.type === NodeType.Comment)
       || (!preserveWhiteSpace &&
           _serializedNode.type === NodeType.Text &&
           !_serializedNode.isStyle &&
           !_serializedNode.textContent.replace(/^\s+|\s+$/gm,'').length
          )
-  )) {
+  ) {
     id = IGNORED_NODE;
   } else {
     id = genId();
@@ -386,11 +389,10 @@ export function serializeNodeWithId(
       serializedNode.type === NodeType.Element) &&
     recordChild
   ) {
-    if (slimDOM &&
-        (
-      (_serializedNode.type === NodeType.Element && _serializedNode.tagName == 'head')
+    if (
+      (slimDOMOptions.headWhitespace && _serializedNode.type === NodeType.Element && _serializedNode.tagName == 'head')
       // would impede performance: || getComputedStyle(n)['white-space'] === 'normal'
-    )) {
+    ) {
       preserveWhiteSpace = false;
     }
     for (const childN of Array.from(n.childNodes)) {
@@ -402,8 +404,8 @@ export function serializeNodeWithId(
         skipChild,
         inlineStylesheet,
         maskInputOptions,
+        slimDOMOptions,
         recordCanvas,
-        slimDOM,
         preserveWhiteSpace,
       );
       if (serializedChildNode) {
@@ -419,8 +421,8 @@ function snapshot(
   blockClass: string | RegExp = 'rr-block',
   inlineStylesheet = true,
   maskAllInputsOrOptions: boolean | MaskInputOptions,
+  slimDOMSensibleOrOptions: boolean | SlimDOMOptions,
   recordCanvas?: boolean,
-  slimDOM = false,
 ): [serializedNodeWithId | null, idNodeMap] {
   const idNodeMap: idNodeMap = {};
   const maskInputOptions: MaskInputOptions =
@@ -445,6 +447,17 @@ function snapshot(
       : maskAllInputsOrOptions === false
       ? {}
       : maskAllInputsOrOptions;
+  const slimDOMOptions: SlimDOMOptions =
+    slimDOMSensibleOrOptions === true
+  // if true: set of sensible options that should not throw away any information
+    ? {
+          script: true,
+          comment: true,
+          headWhitespace: true,
+        }
+      : slimDOMSensibleOrOptions === false
+      ? {}
+      : slimDOMSensibleOrOptions;
   return [
     serializeNodeWithId(
       n,
@@ -454,8 +467,8 @@ function snapshot(
       false,
       inlineStylesheet,
       maskInputOptions,
+      slimDOMOptions,
       recordCanvas,
-      slimDOM,
     ),
     idNodeMap,
   ];
