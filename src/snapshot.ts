@@ -326,6 +326,83 @@ function serializeNode(
   }
 }
 
+function lowerIfExists(maybeAttr : string | number | boolean) : string {
+  if (maybeAttr === undefined) {
+    return '';
+  } else {
+    return (maybeAttr as string).toLowerCase();
+  }
+}
+
+function slimDOMExcluded(sn: serializedNode, slimDOMOptions: SlimDOMOptions): boolean {
+  if (slimDOMOptions.comment && sn.type === NodeType.Comment) {
+    // TODO: convert IE conditional comments to real nodes
+    return true;
+  } else if (sn.type === NodeType.Element) {
+    if (slimDOMOptions.script &&
+        (sn.tagName === 'script' ||
+         (sn.tagName === 'link' && sn.attributes.rel === 'preload' && sn.attributes['as'] === 'script')
+        )) {
+      return true;
+    } else if (slimDOMOptions.headFavicon && (
+      (sn.tagName === 'link' && sn.attributes.rel === 'shortcut icon')
+        || (sn.tagName === 'meta' && (
+          lowerIfExists(sn.attributes['name']).match(/^msapplication-tile(image|color)$/)
+            || lowerIfExists(sn.attributes['name']) === 'application-name'
+            || lowerIfExists(sn.attributes['rel']) === 'icon'
+            || lowerIfExists(sn.attributes['rel']) === 'apple-touch-icon'
+            || lowerIfExists(sn.attributes['rel']) === 'shortcut icon'
+        )))) {
+      return true;
+    } else if (sn.tagName === 'meta') {
+      if (slimDOMOptions.headMetaDescKeywords && (
+        lowerIfExists(sn.attributes['name']).match(/^description|keywords$/)
+      )) {
+        return true;
+      } else if (slimDOMOptions.headMetaSocial && (
+        lowerIfExists(sn.attributes['property']).match(/^(og|twitter|fb):/)  // og = opengraph (facebook)
+          || lowerIfExists(sn.attributes['name']).match(/^(og|twitter):/)
+          || lowerIfExists(sn.attributes['name']) === 'pinterest'
+      )) {
+        return true;
+      } else if (slimDOMOptions.headMetaRobots && (
+        lowerIfExists(sn.attributes['name']) === 'robots'
+          || lowerIfExists(sn.attributes['name']) === 'googlebot'
+          || lowerIfExists(sn.attributes['name']) === 'bingbot'
+      )) {
+        return true;
+      } else if (slimDOMOptions.headMetaHttpEquiv && (
+        sn.attributes['http-equiv'] !== undefined
+      )) {
+        // e.g. X-UA-Compatible, Content-Type, Content-Language,
+        // cache-control, X-Translated-By
+        return true;
+      } else if (slimDOMOptions.headMetaAuthorship && (
+        lowerIfExists(sn.attributes['name']) === 'author'
+          || lowerIfExists(sn.attributes['name']) === 'generator'
+          || lowerIfExists(sn.attributes['name']) === 'framework'
+          || lowerIfExists(sn.attributes['name']) === 'publisher'
+          || lowerIfExists(sn.attributes['name']) === 'progid'
+          || lowerIfExists(sn.attributes['property']).match(/^article:/)
+          || lowerIfExists(sn.attributes['property']).match(/^product:/)
+      )) {
+        return true;
+      } else if (slimDOMOptions.headMetaVerification && (
+        lowerIfExists(sn.attributes['name']) === 'google-site-verification'
+          || lowerIfExists(sn.attributes['name']) === 'yandex-verification'
+          || lowerIfExists(sn.attributes['name']) === 'csrf-token'
+          || lowerIfExists(sn.attributes['name']) === 'p:domain_verify'
+          || lowerIfExists(sn.attributes['name']) === 'verify-v1'
+          || lowerIfExists(sn.attributes['name']) === 'verification'
+          || lowerIfExists(sn.attributes['name']) === 'shopify-checkout-api-token'
+      )) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
 export function serializeNodeWithId(
   n: Node | INode,
   doc: Document,
@@ -356,18 +433,12 @@ export function serializeNodeWithId(
   // Try to reuse the previous id
   if ('__sn' in n) {
     id = n.__sn.id;
-  } else if (
-    (slimDOMOptions.script && _serializedNode.type === NodeType.Element &&
-     (_serializedNode.tagName == 'script' ||
-      (_serializedNode.tagName == 'link' && _serializedNode.attributes.rel == 'preload' && _serializedNode.attributes['as'] == 'script')
-     ))
-      || (slimDOMOptions.comment && _serializedNode.type === NodeType.Comment)
-      || (!preserveWhiteSpace &&
-          _serializedNode.type === NodeType.Text &&
-          !_serializedNode.isStyle &&
-          !_serializedNode.textContent.replace(/^\s+|\s+$/gm,'').length
-         )
-  ) {
+  } else if (slimDOMExcluded(_serializedNode, slimDOMOptions) ||
+             (!preserveWhiteSpace &&
+              _serializedNode.type === NodeType.Text &&
+              !_serializedNode.isStyle &&
+              !_serializedNode.textContent.replace(/^\s+|\s+$/gm,'').length
+             )) {
     id = IGNORED_NODE;
   } else {
     id = genId();
@@ -390,7 +461,9 @@ export function serializeNodeWithId(
     recordChild
   ) {
     if (
-      (slimDOMOptions.headWhitespace && _serializedNode.type === NodeType.Element && _serializedNode.tagName == 'head')
+      (slimDOMOptions.headWhitespace &&
+       _serializedNode.type === NodeType.Element &&
+       _serializedNode.tagName == 'head')
       // would impede performance: || getComputedStyle(n)['white-space'] === 'normal'
     ) {
       preserveWhiteSpace = false;
@@ -448,16 +521,24 @@ function snapshot(
       ? {}
       : maskAllInputsOrOptions;
   const slimDOMOptions: SlimDOMOptions =
-    slimDOMSensibleOrOptions === true
+    (slimDOMSensibleOrOptions === true ||
+     slimDOMSensibleOrOptions === 'all')
   // if true: set of sensible options that should not throw away any information
     ? {
-          script: true,
-          comment: true,
-          headWhitespace: true,
-        }
-      : slimDOMSensibleOrOptions === false
-      ? {}
-      : slimDOMSensibleOrOptions;
+      script: true,
+      comment: true,
+      headFavicon: true,
+      headWhitespace: true,
+      headMetaDescKeywords: slimDOMSensibleOrOptions === 'all',  // destructive
+      headMetaSocial: true,
+      headMetaRobots: true,
+      headMetaHttpEquiv: true,
+      headMetaAuthorship: true,
+      headMetaVerification: true,
+    }
+  : slimDOMSensibleOrOptions === false
+    ? {}
+  : slimDOMSensibleOrOptions;
   return [
     serializeNodeWithId(
       n,
