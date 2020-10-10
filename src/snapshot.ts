@@ -165,6 +165,22 @@ export function transformAttribute(
   }
 }
 
+export function _isBlockedElement(
+  element: HTMLElement,
+  blockClass: string | RegExp
+): boolean {
+  if (typeof blockClass === 'string') {
+    return element.classList.contains(blockClass);
+  } else {
+    element.classList.forEach((className) => {
+      if (blockClass.test(className)) {
+        return true;
+      }
+    });
+  }
+  return false;
+}
+
 function serializeNode(
   n: Node,
   doc: Document,
@@ -187,16 +203,7 @@ function serializeNode(
         systemId: (n as DocumentType).systemId,
       };
     case n.ELEMENT_NODE:
-      let needBlock = false;
-      if (typeof blockClass === 'string') {
-        needBlock = (n as HTMLElement).classList.contains(blockClass);
-      } else {
-        (n as HTMLElement).classList.forEach((className) => {
-          if (blockClass.test(className)) {
-            needBlock = true;
-          }
-        });
-      }
+      const needBlock = _isBlockedElement(n as HTMLElement, blockClass);
       const tagName = getValidTagName((n as HTMLElement).tagName);
       let attributes: attributes = {};
       for (const { name, value } of Array.from((n as HTMLElement).attributes)) {

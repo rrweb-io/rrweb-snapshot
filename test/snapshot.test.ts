@@ -1,6 +1,7 @@
 import 'mocha';
+import { JSDOM } from 'jsdom';
 import { expect } from 'chai';
-import { absoluteToStylesheet } from '../src/snapshot';
+import { absoluteToStylesheet, _isBlockedElement } from '../src/snapshot';
 
 describe('absolute url to stylesheet', () => {
   const href = 'http://localhost/css/style.css';
@@ -83,3 +84,19 @@ describe('absolute url to stylesheet', () => {
     expect(absoluteToStylesheet(`url('')`, href)).to.equal(`url('')`);
   });
 });
+
+describe('isBlockedElement()', () => {
+  const subject = (html: string, opt: any = {}) =>
+    _isBlockedElement(render(html), opt.className || 'rr-block')
+
+  const render = (html: string): HTMLElement =>
+    JSDOM.fragment(html).querySelector('div')!
+
+  it('can handle empty elements', () => {
+    expect(subject('<div />')).to.equal(false)
+  })
+
+  it('blocks prohibited className', () => {
+    expect(subject('<div class="foo rr-block bar" />')).to.equal(true)
+  })
+})
