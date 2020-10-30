@@ -6,6 +6,7 @@ import {
   elementNode,
   idNodeMap,
   INode,
+  CallbackArray,
 } from './types';
 
 const tagMap: tagMap = {
@@ -73,6 +74,32 @@ export function addHoverClass(cssText: string): string {
     }
   });
   return cssText;
+}
+
+function isIframe(n: serializedNodeWithId) {
+  return n.type === NodeType.Element && n.tagName === 'iframe';
+}
+
+function buildIframe(
+  iframe: HTMLIFrameElement,
+  childNodes: serializedNodeWithId[],
+  options: {
+    map: idNodeMap;
+    cbs: CallbackArray;
+    hackCss: boolean;
+  },
+) {
+  const { map, cbs, hackCss } = options;
+  const targetDoc = iframe.contentDocument!;
+  for (const childN of childNodes) {
+    buildNodeWithSN(childN, {
+      doc: targetDoc,
+      map,
+      cbs,
+      skipChild: false,
+      hackCss,
+    });
+  }
 }
 
 function buildNode(
@@ -196,14 +223,21 @@ export function buildNodeWithSN(
   options: {
     doc: Document;
     map: idNodeMap;
+    cbs: CallbackArray;
     skipChild?: boolean;
     hackCss: boolean;
   },
-): INode | null {
-  const { doc, map, skipChild = false, hackCss = true } = options;
+): [INode | null, serializedNodeWithId[]] {
+  const { doc, map, skipChild = false, hackCss = true, cbs } = options;
   let node = buildNode(n, { doc, hackCss });
   if (!node) {
-    return null;
+    return [null, []];
+  }
+  if (n.rootId) {
+    console.assert(
+      ((map[n.rootId] as unknown) as Document) === doc,
+      'Target document should has the same root id.',
+    );
   }
   // use target document as root document
   if (n.type === NodeType.Document) {
@@ -219,21 +253,40 @@ export function buildNodeWithSN(
     (n.type === NodeType.Document || n.type === NodeType.Element) &&
     !skipChild
   ) {
+    const nodeIsIframe = isIframe(n);
+    if (nodeIsIframe) {
+      return [node as INode, n.childNodes];
+    }
     for (const childN of n.childNodes) {
-      const childNode = buildNodeWithSN(childN, {
+      const [childNode, nestedNodes] = buildNodeWithSN(childN, {
         doc,
         map,
+        cbs,
         skipChild: false,
         hackCss,
       });
       if (!childNode) {
         console.warn('Failed to rebuild', childN);
-      } else {
-        node.appendChild(childNode);
+        continue;
+      }
+
+      node.appendChild(childNode);
+      if (nestedNodes.length === 0) {
+        continue;
+      }
+      const childNodeIsIframe = isIframe(childN);
+      if (childNodeIsIframe) {
+        cbs.push(() =>
+          buildIframe(
+            (childNode as unknown) as HTMLIFrameElement,
+            nestedNodes,
+            { map, cbs, hackCss },
+          ),
+        );
       }
     }
   }
-  return node as INode;
+  return [node as INode, []];
 }
 
 function visit(idNodeMap: idNodeMap, onVisit: (node: INode) => void) {
@@ -278,12 +331,15 @@ function rebuild(
 ): [Node | null, idNodeMap] {
   const { doc, onVisit, hackCss = true } = options;
   const idNodeMap: idNodeMap = {};
-  const node = buildNodeWithSN(n, {
+  const callbackArray: CallbackArray = [];
+  const [node] = buildNodeWithSN(n, {
     doc,
     map: idNodeMap,
+    cbs: callbackArray,
     skipChild: false,
     hackCss,
   });
+  callbackArray.forEach((f) => f());
   visit(idNodeMap, (visitedNode) => {
     if (onVisit) {
       onVisit(visitedNode);

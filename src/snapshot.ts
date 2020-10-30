@@ -215,11 +215,18 @@ function serializeNode(
     maskInputOptions = {},
     recordCanvas,
   } = options;
+  // Only record root id when document object is not the base document
+  let rootId: number | undefined;
+  if (((doc as unknown) as INode).__sn) {
+    const docId = ((doc as unknown) as INode).__sn.id;
+    rootId = docId === 1 ? undefined : docId;
+  }
   switch (n.nodeType) {
     case n.DOCUMENT_NODE:
       return {
         type: NodeType.Document,
         childNodes: [],
+        rootId,
       };
     case n.DOCUMENT_TYPE_NODE:
       return {
@@ -227,6 +234,7 @@ function serializeNode(
         name: (n as DocumentType).name,
         publicId: (n as DocumentType).publicId,
         systemId: (n as DocumentType).systemId,
+        rootId,
       };
     case n.ELEMENT_NODE:
       const needBlock = _isBlockedElement(
@@ -333,6 +341,7 @@ function serializeNode(
         childNodes: [],
         isSVG: isSVGElement(n as Element) || undefined,
         needBlock,
+        rootId,
       };
     case n.TEXT_NODE:
       // The parent node may not be a html element which has a tagName attribute.
@@ -351,16 +360,19 @@ function serializeNode(
         type: NodeType.Text,
         textContent: textContent || '',
         isStyle,
+        rootId,
       };
     case n.CDATA_SECTION_NODE:
       return {
         type: NodeType.CDATA,
         textContent: '',
+        rootId,
       };
     case n.COMMENT_NODE:
       return {
         type: NodeType.Comment,
         textContent: (n as Comment).textContent || '',
+        rootId,
       };
     default:
       return false;
@@ -558,6 +570,31 @@ export function serializeNodeWithId(
       }
     }
   }
+
+  if (
+    serializedNode.type === NodeType.Element &&
+    serializedNode.tagName === 'iframe'
+  ) {
+    const iframeDoc = (n as HTMLIFrameElement).contentDocument;
+    if (iframeDoc) {
+      const serializedIframeNode = serializeNodeWithId(iframeDoc, {
+        doc: iframeDoc,
+        map,
+        blockClass,
+        blockSelector,
+        skipChild: false,
+        inlineStylesheet,
+        maskInputOptions,
+        slimDOMOptions,
+        recordCanvas,
+        preserveWhiteSpace,
+      });
+      if (serializedIframeNode) {
+        serializedNode.childNodes.push(serializedIframeNode);
+      }
+    }
+  }
+
   return serializedNode;
 }
 
