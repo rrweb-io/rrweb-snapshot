@@ -40,7 +40,9 @@ export declare type commentNode = {
     type: NodeType.Comment;
     textContent: string;
 };
-export declare type serializedNode = documentNode | documentTypeNode | elementNode | textNode | cdataNode | commentNode;
+export declare type serializedNode = (documentNode | documentTypeNode | elementNode | textNode | cdataNode | commentNode) & {
+    rootId?: number;
+};
 export declare type serializedNodeWithId = serializedNode & {
     id: number;
 };
@@ -82,3 +84,4 @@ export declare type SlimDOMOptions = Partial<{
     headMetaAuthorship: boolean;
     headMetaVerification: boolean;
 }>;
+export declare type CallbackArray<T = Function> = T[];

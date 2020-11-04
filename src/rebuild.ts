@@ -249,14 +249,16 @@ export function buildNodeWithSN(
 
   (node as INode).__sn = n;
   map[n.id] = node as INode;
+
+  const nodeIsIframe = isIframe(n);
+  if (n.type === NodeType.Element && nodeIsIframe) {
+    return [node as INode, n.childNodes];
+  }
+
   if (
     (n.type === NodeType.Document || n.type === NodeType.Element) &&
     !skipChild
   ) {
-    const nodeIsIframe = isIframe(n);
-    if (nodeIsIframe) {
-      return [node as INode, n.childNodes];
-    }
     for (const childN of n.childNodes) {
       const [childNode, nestedNodes] = buildNodeWithSN(childN, {
         doc,
