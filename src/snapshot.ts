@@ -18,8 +18,12 @@ function genId(): number {
   return _id++;
 }
 
-function getValidTagName(tagName: string): string {
-  const processedTagName = tagName.toLowerCase().trim();
+function getValidTagName(element: HTMLElement): string {
+  if (element instanceof HTMLFormElement) {
+    return 'form';
+  }
+
+  const processedTagName = element.tagName.toLowerCase().trim();
 
   if (tagNameRegex.test(processedTagName)) {
     // if the tag name is odd and we cannot extract
@@ -34,9 +38,7 @@ function getValidTagName(tagName: string): string {
 function getCssRulesString(s: CSSStyleSheet): string | null {
   try {
     const rules = s.rules || s.cssRules;
-    return rules
-      ? Array.from(rules).map(getCssRuleString).join('')
-      : null;
+    return rules ? Array.from(rules).map(getCssRuleString).join('') : null;
   } catch (error) {
     return null;
   }
@@ -65,7 +67,7 @@ function extractOrigin(url: string): string {
 
 const URL_IN_CSS_REF = /url\((?:(')([^']*)'|(")([^"]*)"|([^)]*))\)/gm;
 const RELATIVE_PATH = /^(?!www\.|(?:http|ftp)s?:\/\/|[A-Za-z]:\\|\/\/|#).*/;
-const DATA_URI = /^(data:)([\w\/\+\-]+);(charset=[\w-]+|base64|utf-?8).*,(.*)/i;
+const DATA_URI = /^(data:)([^,]*),(.*)/i;
 export function absoluteToStylesheet(
   cssText: string | null,
   href: string,
@@ -74,18 +76,20 @@ export function absoluteToStylesheet(
     URL_IN_CSS_REF,
     (origin, quote1, path1, quote2, path2, path3) => {
       const filePath = path1 || path2 || path3;
-      const maybe_quote = quote1 || quote2 || '';
+      const maybeQuote = quote1 || quote2 || '';
       if (!filePath) {
         return origin;
       }
       if (!RELATIVE_PATH.test(filePath)) {
-        return `url(${maybe_quote}${filePath}${maybe_quote})`;
+        return `url(${maybeQuote}${filePath}${maybeQuote})`;
       }
       if (DATA_URI.test(filePath)) {
-        return `url(${maybe_quote}${filePath}${maybe_quote})`;
+        return `url(${maybeQuote}${filePath}${maybeQuote})`;
       }
       if (filePath[0] === '/') {
-        return `url(${maybe_quote}${extractOrigin(href) + filePath}${maybe_quote})`;
+        return `url(${maybeQuote}${
+          extractOrigin(href) + filePath
+        }${maybeQuote})`;
       }
       const stack = href.split('/');
       const parts = filePath.split('/');
@@ -99,7 +103,7 @@ export function absoluteToStylesheet(
           stack.push(part);
         }
       }
-      return `url(${maybe_quote}${stack.join('/')}${maybe_quote})`;
+      return `url(${maybeQuote}${stack.join('/')}${maybeQuote})`;
     },
   );
 }
@@ -162,14 +166,48 @@ export function transformAttribute(
   }
 }
 
+export function _isBlockedElement(
+  element: HTMLElement,
+  blockClass: string | RegExp,
+  blockSelector: string | null,
+): boolean {
+  if (typeof blockClass === 'string') {
+    if (element.classList.contains(blockClass)) {
+      return true;
+    }
+  } else {
+    element.classList.forEach((className) => {
+      if (blockClass.test(className)) {
+        return true;
+      }
+    });
+  }
+  if (blockSelector) {
+    return element.matches(blockSelector);
+  }
+
+  return false;
+}
+
 function serializeNode(
   n: Node,
-  doc: Document,
-  blockClass: string | RegExp,
-  inlineStylesheet: boolean,
-  maskInputOptions: MaskInputOptions = {},
-  recordCanvas: boolean,
+  options: {
+    doc: Document;
+    blockClass: string | RegExp;
+    blockSelector: string | null;
+    inlineStylesheet: boolean;
+    maskInputOptions: MaskInputOptions;
+    recordCanvas: boolean;
+  },
 ): serializedNode | false {
+  const {
+    doc,
+    blockClass,
+    blockSelector,
+    inlineStylesheet,
+    maskInputOptions = {},
+    recordCanvas,
+  } = options;
   switch (n.nodeType) {
     case n.DOCUMENT_NODE:
       return {
@@ -184,17 +222,12 @@ function serializeNode(
         systemId: (n as DocumentType).systemId,
       };
     case n.ELEMENT_NODE:
-      let needBlock = false;
-      if (typeof blockClass === 'string') {
-        needBlock = (n as HTMLElement).classList.contains(blockClass);
-      } else {
-        (n as HTMLElement).classList.forEach((className) => {
-          if (blockClass.test(className)) {
-            needBlock = true;
-          }
-        });
-      }
-      const tagName = getValidTagName((n as HTMLElement).tagName);
+      const needBlock = _isBlockedElement(
+        n as HTMLElement,
+        blockClass,
+        blockSelector,
+      );
+      const tagName = getValidTagName(n as HTMLElement);
       let attributes: attributes = {};
       for (const { name, value } of Array.from((n as HTMLElement).attributes)) {
         attributes[name] = transformAttribute(doc, name, value);
@@ -280,8 +313,11 @@ function serializeNode(
       }
       if (needBlock) {
         const { width, height } = (n as HTMLElement).getBoundingClientRect();
-        attributes.rr_width = `${width}px`;
-        attributes.rr_height = `${height}px`;
+        attributes = {
+          class: attributes.class,
+          rr_width: `${width}px`,
+          rr_height: `${height}px`,
+        };
       }
       return {
         type: NodeType.Element,
@@ -324,7 +360,7 @@ function serializeNode(
   }
 }
 
-function lowerIfExists(maybeAttr : string | number | boolean) : string {
+function lowerIfExists(maybeAttr: string | number | boolean): string {
   if (maybeAttr === undefined) {
     return '';
   } else {
@@ -332,68 +368,83 @@ function lowerIfExists(maybeAttr : string | number | boolean) : string {
   }
 }
 
-function slimDOMExcluded(sn: serializedNode, slimDOMOptions: SlimDOMOptions): boolean {
+function slimDOMExcluded(
+  sn: serializedNode,
+  slimDOMOptions: SlimDOMOptions,
+): boolean {
   if (slimDOMOptions.comment && sn.type === NodeType.Comment) {
     // TODO: convert IE conditional comments to real nodes
     return true;
   } else if (sn.type === NodeType.Element) {
-    if (slimDOMOptions.script &&
-        (sn.tagName === 'script' ||
-         (sn.tagName === 'link' && sn.attributes.rel === 'preload' && sn.attributes['as'] === 'script')
-        )) {
+    if (
+      slimDOMOptions.script &&
+      (sn.tagName === 'script' ||
+        (sn.tagName === 'link' &&
+          sn.attributes.rel === 'preload' &&
+          sn.attributes.as === 'script'))
+    ) {
       return true;
-    } else if (slimDOMOptions.headFavicon && (
-      (sn.tagName === 'link' && sn.attributes.rel === 'shortcut icon')
-        || (sn.tagName === 'meta' && (
-          lowerIfExists(sn.attributes['name']).match(/^msapplication-tile(image|color)$/)
-            || lowerIfExists(sn.attributes['name']) === 'application-name'
-            || lowerIfExists(sn.attributes['rel']) === 'icon'
-            || lowerIfExists(sn.attributes['rel']) === 'apple-touch-icon'
-            || lowerIfExists(sn.attributes['rel']) === 'shortcut icon'
-        )))) {
+    } else if (
+      slimDOMOptions.headFavicon &&
+      ((sn.tagName === 'link' && sn.attributes.rel === 'shortcut icon') ||
+        (sn.tagName === 'meta' &&
+          (lowerIfExists(sn.attributes.name).match(
+            /^msapplication-tile(image|color)$/,
+          ) ||
+            lowerIfExists(sn.attributes.name) === 'application-name' ||
+            lowerIfExists(sn.attributes.rel) === 'icon' ||
+            lowerIfExists(sn.attributes.rel) === 'apple-touch-icon' ||
+            lowerIfExists(sn.attributes.rel) === 'shortcut icon')))
+    ) {
       return true;
     } else if (sn.tagName === 'meta') {
-      if (slimDOMOptions.headMetaDescKeywords && (
-        lowerIfExists(sn.attributes['name']).match(/^description|keywords$/)
-      )) {
+      if (
+        slimDOMOptions.headMetaDescKeywords &&
+        lowerIfExists(sn.attributes.name).match(/^description|keywords$/)
+      ) {
         return true;
-      } else if (slimDOMOptions.headMetaSocial && (
-        lowerIfExists(sn.attributes['property']).match(/^(og|twitter|fb):/)  // og = opengraph (facebook)
-          || lowerIfExists(sn.attributes['name']).match(/^(og|twitter):/)
-          || lowerIfExists(sn.attributes['name']) === 'pinterest'
-      )) {
+      } else if (
+        slimDOMOptions.headMetaSocial &&
+        (lowerIfExists(sn.attributes.property).match(/^(og|twitter|fb):/) || // og = opengraph (facebook)
+          lowerIfExists(sn.attributes.name).match(/^(og|twitter):/) ||
+          lowerIfExists(sn.attributes.name) === 'pinterest')
+      ) {
         return true;
-      } else if (slimDOMOptions.headMetaRobots && (
-        lowerIfExists(sn.attributes['name']) === 'robots'
-          || lowerIfExists(sn.attributes['name']) === 'googlebot'
-          || lowerIfExists(sn.attributes['name']) === 'bingbot'
-      )) {
+      } else if (
+        slimDOMOptions.headMetaRobots &&
+        (lowerIfExists(sn.attributes.name) === 'robots' ||
+          lowerIfExists(sn.attributes.name) === 'googlebot' ||
+          lowerIfExists(sn.attributes.name) === 'bingbot')
+      ) {
         return true;
-      } else if (slimDOMOptions.headMetaHttpEquiv && (
+      } else if (
+        slimDOMOptions.headMetaHttpEquiv &&
         sn.attributes['http-equiv'] !== undefined
-      )) {
+      ) {
         // e.g. X-UA-Compatible, Content-Type, Content-Language,
         // cache-control, X-Translated-By
         return true;
-      } else if (slimDOMOptions.headMetaAuthorship && (
-        lowerIfExists(sn.attributes['name']) === 'author'
-          || lowerIfExists(sn.attributes['name']) === 'generator'
-          || lowerIfExists(sn.attributes['name']) === 'framework'
-          || lowerIfExists(sn.attributes['name']) === 'publisher'
-          || lowerIfExists(sn.attributes['name']) === 'progid'
-          || lowerIfExists(sn.attributes['property']).match(/^article:/)
-          || lowerIfExists(sn.attributes['property']).match(/^product:/)
-      )) {
+      } else if (
+        slimDOMOptions.headMetaAuthorship &&
+        (lowerIfExists(sn.attributes.name) === 'author' ||
+          lowerIfExists(sn.attributes.name) === 'generator' ||
+          lowerIfExists(sn.attributes.name) === 'framework' ||
+          lowerIfExists(sn.attributes.name) === 'publisher' ||
+          lowerIfExists(sn.attributes.name) === 'progid' ||
+          lowerIfExists(sn.attributes.property).match(/^article:/) ||
+          lowerIfExists(sn.attributes.property).match(/^product:/))
+      ) {
         return true;
-      } else if (slimDOMOptions.headMetaVerification && (
-        lowerIfExists(sn.attributes['name']) === 'google-site-verification'
-          || lowerIfExists(sn.attributes['name']) === 'yandex-verification'
-          || lowerIfExists(sn.attributes['name']) === 'csrf-token'
-          || lowerIfExists(sn.attributes['name']) === 'p:domain_verify'
-          || lowerIfExists(sn.attributes['name']) === 'verify-v1'
-          || lowerIfExists(sn.attributes['name']) === 'verification'
-          || lowerIfExists(sn.attributes['name']) === 'shopify-checkout-api-token'
-      )) {
+      } else if (
+        slimDOMOptions.headMetaVerification &&
+        (lowerIfExists(sn.attributes.name) === 'google-site-verification' ||
+          lowerIfExists(sn.attributes.name) === 'yandex-verification' ||
+          lowerIfExists(sn.attributes.name) === 'csrf-token' ||
+          lowerIfExists(sn.attributes.name) === 'p:domain_verify' ||
+          lowerIfExists(sn.attributes.name) === 'verify-v1' ||
+          lowerIfExists(sn.attributes.name) === 'verification' ||
+          lowerIfExists(sn.attributes.name) === 'shopify-checkout-api-token')
+      ) {
         return true;
       }
     }
@@ -403,24 +454,39 @@ function slimDOMExcluded(sn: serializedNode, slimDOMOptions: SlimDOMOptions): bo
 
 export function serializeNodeWithId(
   n: Node | INode,
-  doc: Document,
-  map: idNodeMap,
-  blockClass: string | RegExp,
-  skipChild = false,
-  inlineStylesheet = true,
-  maskInputOptions?: MaskInputOptions,
-  slimDOMOptions: SlimDOMOptions = {},
-  recordCanvas?: boolean,
-  preserveWhiteSpace = true,
+  options: {
+    doc: Document;
+    map: idNodeMap;
+    blockClass: string | RegExp;
+    blockSelector: string | null;
+    skipChild: boolean;
+    inlineStylesheet: boolean;
+    maskInputOptions?: MaskInputOptions;
+    slimDOMOptions: SlimDOMOptions;
+    recordCanvas?: boolean;
+    preserveWhiteSpace?: boolean;
+  },
 ): serializedNodeWithId | null {
-  const _serializedNode = serializeNode(
-    n,
+  const {
+    doc,
+    map,
+    blockClass,
+    blockSelector,
+    skipChild = false,
+    inlineStylesheet = true,
+    maskInputOptions = {},
+    slimDOMOptions,
+    recordCanvas = false,
+  } = options;
+  let { preserveWhiteSpace = true } = options;
+  const _serializedNode = serializeNode(n, {
     doc,
     blockClass,
+    blockSelector,
     inlineStylesheet,
     maskInputOptions,
-    recordCanvas || false,
-  );
+    recordCanvas,
+  });
   if (!_serializedNode) {
     // TODO: dev only
     console.warn(n, 'not serialized');
@@ -431,12 +497,13 @@ export function serializeNodeWithId(
   // Try to reuse the previous id
   if ('__sn' in n) {
     id = n.__sn.id;
-  } else if (slimDOMExcluded(_serializedNode, slimDOMOptions) ||
-             (!preserveWhiteSpace &&
-              _serializedNode.type === NodeType.Text &&
-              !_serializedNode.isStyle &&
-              !_serializedNode.textContent.replace(/^\s+|\s+$/gm,'').length
-             )) {
+  } else if (
+    slimDOMExcluded(_serializedNode, slimDOMOptions) ||
+    (!preserveWhiteSpace &&
+      _serializedNode.type === NodeType.Text &&
+      !_serializedNode.isStyle &&
+      !_serializedNode.textContent.replace(/^\s+|\s+$/gm, '').length)
+  ) {
     id = IGNORED_NODE;
   } else {
     id = genId();
@@ -444,7 +511,7 @@ export function serializeNodeWithId(
   const serializedNode = Object.assign(_serializedNode, { id });
   (n as INode).__sn = serializedNode;
   if (id === IGNORED_NODE) {
-    return null;  // slimDOM
+    return null; // slimDOM
   }
   map[id] = n as INode;
   let recordChild = !skipChild;
@@ -459,26 +526,26 @@ export function serializeNodeWithId(
     recordChild
   ) {
     if (
-      (slimDOMOptions.headWhitespace &&
-       _serializedNode.type === NodeType.Element &&
-       _serializedNode.tagName == 'head')
+      slimDOMOptions.headWhitespace &&
+      _serializedNode.type === NodeType.Element &&
+      _serializedNode.tagName === 'head'
       // would impede performance: || getComputedStyle(n)['white-space'] === 'normal'
     ) {
       preserveWhiteSpace = false;
     }
     for (const childN of Array.from(n.childNodes)) {
-      const serializedChildNode = serializeNodeWithId(
-        childN,
+      const serializedChildNode = serializeNodeWithId(childN, {
         doc,
         map,
         blockClass,
+        blockSelector,
         skipChild,
         inlineStylesheet,
         maskInputOptions,
         slimDOMOptions,
         recordCanvas,
         preserveWhiteSpace,
-      );
+      });
       if (serializedChildNode) {
         serializedNode.childNodes.push(serializedChildNode);
       }
@@ -489,15 +556,26 @@ export function serializeNodeWithId(
 
 function snapshot(
   n: Document,
-  blockClass: string | RegExp = 'rr-block',
-  inlineStylesheet = true,
-  maskAllInputsOrOptions: boolean | MaskInputOptions,
-  slimDOMSensibleOrOptions: boolean | SlimDOMOptions,
-  recordCanvas?: boolean,
+  options?: {
+    blockClass?: string | RegExp;
+    inlineStylesheet?: boolean;
+    maskAllInputs?: boolean | MaskInputOptions;
+    slimDOM?: boolean | SlimDOMOptions;
+    recordCanvas?: boolean;
+    blockSelector?: string | null;
+  },
 ): [serializedNodeWithId | null, idNodeMap] {
+  const {
+    blockClass = 'rr-block',
+    inlineStylesheet = true,
+    recordCanvas = false,
+    blockSelector = null,
+    maskAllInputs = false,
+    slimDOM = false,
+  } = options || {};
   const idNodeMap: idNodeMap = {};
   const maskInputOptions: MaskInputOptions =
-    maskAllInputsOrOptions === true
+    maskAllInputs === true
       ? {
           color: true,
           date: true,
@@ -515,40 +593,39 @@ function snapshot(
           textarea: true,
           select: true,
         }
-      : maskAllInputsOrOptions === false
+      : maskAllInputs === false
       ? {}
-      : maskAllInputsOrOptions;
+      : maskAllInputs;
   const slimDOMOptions: SlimDOMOptions =
-    (slimDOMSensibleOrOptions === true ||
-     slimDOMSensibleOrOptions === 'all')
-  // if true: set of sensible options that should not throw away any information
-    ? {
-      script: true,
-      comment: true,
-      headFavicon: true,
-      headWhitespace: true,
-      headMetaDescKeywords: slimDOMSensibleOrOptions === 'all',  // destructive
-      headMetaSocial: true,
-      headMetaRobots: true,
-      headMetaHttpEquiv: true,
-      headMetaAuthorship: true,
-      headMetaVerification: true,
-    }
-  : slimDOMSensibleOrOptions === false
-    ? {}
-  : slimDOMSensibleOrOptions;
+    slimDOM === true || slimDOM === 'all'
+      ? // if true: set of sensible options that should not throw away any information
+        {
+          script: true,
+          comment: true,
+          headFavicon: true,
+          headWhitespace: true,
+          headMetaDescKeywords: slimDOM === 'all', // destructive
+          headMetaSocial: true,
+          headMetaRobots: true,
+          headMetaHttpEquiv: true,
+          headMetaAuthorship: true,
+          headMetaVerification: true,
+        }
+      : slimDOM === false
+      ? {}
+      : slimDOM;
   return [
-    serializeNodeWithId(
-      n,
-      n,
-      idNodeMap,
+    serializeNodeWithId(n, {
+      doc: n,
+      map: idNodeMap,
       blockClass,
-      false,
+      blockSelector,
+      skipChild: false,
       inlineStylesheet,
       maskInputOptions,
       slimDOMOptions,
       recordCanvas,
-    ),
+    }),
     idNodeMap,
   ];
 }
@@ -568,6 +645,11 @@ export function visitSnapshot(
   }
 
   walk(node);
+}
+
+export function cleanupSnapshot() {
+  // allow a new recording to start numbering nodes from scratch
+  _id = 1;
 }
 
 export default snapshot;

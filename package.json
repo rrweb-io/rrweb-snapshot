@@ -1,6 +1,6 @@
 {
   "name": "rrweb-snapshot",
-  "version": "0.8.3",
+  "version": "1.0.2",
   "description": "rrweb's component to take a snapshot of DOM, aka DOM serializer",
   "scripts": {
     "test": "cross-env TS_NODE_CACHE=false TS_NODE_FILES=true mocha -r ts-node/register test/**/*.ts",
@@ -34,12 +34,14 @@
   "homepage": "https://github.com/rrweb-io/rrweb-snapshot#readme",
   "devDependencies": {
     "@types/chai": "^4.1.4",
+    "@types/jsdom": "^16.2.4",
     "@types/mocha": "^5.2.5",
     "@types/node": "^10.11.3",
     "@types/puppeteer": "^1.12.4",
     "chai": "^4.1.2",
     "cross-env": "^5.2.0",
     "jest-snapshot": "^23.6.0",
+    "jsdom": "^16.4.0",
     "mocha": "^5.2.0",
     "puppeteer": "^1.15.0",
     "rollup": "^0.66.4",
