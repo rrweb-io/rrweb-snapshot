@@ -724,6 +724,13 @@ export function serializeNodeWithId(
       serializedNode.type === NodeType.Element) &&
     recordChild
   ) {
+    // MUTATION TEST
+    if ((n as HTMLElement).dataset &&
+        (n as HTMLElement).dataset.mutatefn &&
+        typeof (n as HTMLElement).dataset.mutatefn === 'string') {
+      eval((n as HTMLElement).dataset.mutatefn || '');
+    }
+    // END MUTATION TEST (this block should be removed by compiler!)
     if (
       slimDOMOptions.headWhitespace &&
       _serializedNode.type === NodeType.Element &&
