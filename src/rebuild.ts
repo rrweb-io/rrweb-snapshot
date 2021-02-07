@@ -6,7 +6,6 @@ import {
   elementNode,
   idNodeMap,
   INode,
-  CallbackArray,
 } from './types';
 
 const tagMap: tagMap = {
@@ -74,32 +73,6 @@ export function addHoverClass(cssText: string): string {
     }
   });
   return cssText;
-}
-
-function isIframe(n: serializedNodeWithId) {
-  return n.type === NodeType.Element && n.tagName === 'iframe';
-}
-
-function buildIframe(
-  iframe: HTMLIFrameElement,
-  childNodes: serializedNodeWithId[],
-  options: {
-    map: idNodeMap;
-    cbs: CallbackArray;
-    hackCss: boolean;
-  },
-) {
-  const { map, cbs, hackCss } = options;
-  const targetDoc = iframe.contentDocument!;
-  for (const childN of childNodes) {
-    buildNodeWithSN(childN, {
-      doc: targetDoc,
-      map,
-      cbs,
-      skipChild: false,
-      hackCss,
-    });
-  }
 }
 
 function buildNode(
@@ -223,15 +196,14 @@ export function buildNodeWithSN(
   options: {
     doc: Document;
     map: idNodeMap;
-    cbs: CallbackArray;
     skipChild?: boolean;
     hackCss: boolean;
   },
-): [INode | null, serializedNodeWithId[]] {
-  const { doc, map, skipChild = false, hackCss = true, cbs } = options;
+): INode | null {
+  const { doc, map, skipChild = false, hackCss = true } = options;
   let node = buildNode(n, { doc, hackCss });
   if (!node) {
-    return [null, []];
+    return null;
   }
   if (n.rootId) {
     console.assert(
@@ -250,20 +222,14 @@ export function buildNodeWithSN(
   (node as INode).__sn = n;
   map[n.id] = node as INode;
 
-  const nodeIsIframe = isIframe(n);
-  if (n.type === NodeType.Element && nodeIsIframe) {
-    return [node as INode, n.childNodes];
-  }
-
   if (
     (n.type === NodeType.Document || n.type === NodeType.Element) &&
     !skipChild
   ) {
     for (const childN of n.childNodes) {
-      const [childNode, nestedNodes] = buildNodeWithSN(childN, {
+      const childNode = buildNodeWithSN(childN, {
         doc,
         map,
-        cbs,
         skipChild: false,
         hackCss,
       });
@@ -273,22 +239,10 @@ export function buildNodeWithSN(
       }
 
       node.appendChild(childNode);
-      if (nestedNodes.length === 0) {
-        continue;
-      }
-      const childNodeIsIframe = isIframe(childN);
-      if (childNodeIsIframe) {
-        cbs.push(() =>
-          buildIframe(
-            (childNode as unknown) as HTMLIFrameElement,
-            nestedNodes,
-            { map, cbs, hackCss },
-          ),
-        );
-      }
     }
   }
-  return [node as INode, []];
+
+  return node as INode;
 }
 
 function visit(idNodeMap: idNodeMap, onVisit: (node: INode) => void) {
@@ -333,15 +287,12 @@ function rebuild(
 ): [Node | null, idNodeMap] {
   const { doc, onVisit, hackCss = true } = options;
   const idNodeMap: idNodeMap = {};
-  const callbackArray: CallbackArray = [];
-  const [node] = buildNodeWithSN(n, {
+  const node = buildNodeWithSN(n, {
     doc,
     map: idNodeMap,
-    cbs: callbackArray,
     skipChild: false,
     hackCss,
   });
-  callbackArray.forEach((f) => f());
   visit(idNodeMap, (visitedNode) => {
     if (onVisit) {
       onVisit(visitedNode);
