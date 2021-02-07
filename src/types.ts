@@ -103,5 +103,3 @@ export type SlimDOMOptions = Partial<{
   headMetaAuthorship: boolean;
   headMetaVerification: boolean;
 }>;
-
-export type CallbackArray<T = Function> = T[];
