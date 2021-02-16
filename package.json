@@ -3,6 +3,7 @@
   "version": "1.0.6",
   "description": "rrweb's component to take a snapshot of DOM, aka DOM serializer",
   "scripts": {
+    "prepare": "npm run bundle",
     "test": "cross-env TS_NODE_CACHE=false TS_NODE_FILES=true mocha -r ts-node/register test/**/*.ts",
     "bundle": "rollup --config",
     "typings": "tsc -d --declarationDir typings"
