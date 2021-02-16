@@ -183,11 +183,12 @@ export function _isBlockedElement(
       return true;
     }
   } else {
-    element.classList.forEach((className) => {
+    for (let eIndex = 0; eIndex < element.classList.length; eIndex++) {
+      const className = element.classList[eIndex];
       if (blockClass.test(className)) {
         return true;
       }
-    });
+    }
   }
   if (blockSelector) {
     return element.matches(blockSelector);
