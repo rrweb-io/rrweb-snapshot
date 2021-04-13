@@ -57,23 +57,68 @@ function getTagName(n: elementNode): string {
   return tagName;
 }
 
+// based on https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Regular_Expressions#escaping
+function escapeRegExp(string: string) {
+  return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); // $& means the whole matched string
+}
+
+// based on https://github.com/jonschlinkert/array-unique
+function unique(arr: string[]): string[] {
+  if (!Array.isArray(arr)) {
+    throw new TypeError('array-unique expects an array.');
+  }
+
+  const len = arr.length;
+  let i = -1;
+
+  while (i++ < len) {
+    let j = i + 1;
+
+    for (; j < arr.length; ++j) {
+      if (arr[i] === arr[j]) {
+        arr.splice(j--, 1);
+      }
+    }
+  }
+  return arr;
+}
+
 const HOVER_SELECTOR = /([^\\]):hover/g;
 export function addHoverClass(cssText: string): string {
-  const ast = parse(cssText, { silent: true });
+  const ast = parse(cssText, {
+    silent: true,
+  });
+
   if (!ast.stylesheet) {
     return cssText;
   }
+
+  const selectors: string[] = [];
   ast.stylesheet.rules.forEach((rule) => {
     if ('selectors' in rule) {
       (rule.selectors || []).forEach((selector: string) => {
         if (HOVER_SELECTOR.test(selector)) {
-          const newSelector = selector.replace(HOVER_SELECTOR, '$1.\\:hover');
-          cssText = cssText.replace(selector, `${selector}, ${newSelector}`);
+          selectors.push(selector);
         }
       });
     }
   });
-  return cssText;
+
+  if (selectors.length === 0) return cssText;
+
+  const selectorMatcher = new RegExp(
+    unique(selectors)
+      .map((selector) => {
+        return escapeRegExp(selector);
+      })
+      .join('|'),
+    'g',
+  );
+
+  return cssText.replace(selectorMatcher, (selector) => {
+    const newSelector = selector.replace(HOVER_SELECTOR, '$1.\\:hover');
+    return selector + ', ' + newSelector;
+  });
 }
 
 function buildNode(
