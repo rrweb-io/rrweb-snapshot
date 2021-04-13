@@ -83,7 +83,8 @@ function unique(arr: string[]): string[] {
   return arr;
 }
 
-const HOVER_SELECTOR = /([^\\]):hover/g;
+const HOVER_SELECTOR = /([^\\]):hover/;
+const HOVER_SELECTOR_GLOBAL = new RegExp(HOVER_SELECTOR, 'g');
 export function addHoverClass(cssText: string): string {
   const ast = parse(cssText, {
     silent: true,
@@ -108,6 +109,7 @@ export function addHoverClass(cssText: string): string {
 
   const selectorMatcher = new RegExp(
     unique(selectors)
+      .sort((a, b) => b.length - a.length)
       .map((selector) => {
         return escapeRegExp(selector);
       })
@@ -116,8 +118,8 @@ export function addHoverClass(cssText: string): string {
   );
 
   return cssText.replace(selectorMatcher, (selector) => {
-    const newSelector = selector.replace(HOVER_SELECTOR, '$1.\\:hover');
-    return selector + ', ' + newSelector;
+    const newSelector = selector.replace(HOVER_SELECTOR_GLOBAL, '$1.\\:hover');
+    return `${selector}, ${newSelector}`;
   });
 }
 
