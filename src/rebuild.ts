@@ -62,27 +62,6 @@ function escapeRegExp(string: string) {
   return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); // $& means the whole matched string
 }
 
-// based on https://github.com/jonschlinkert/array-unique
-function unique(arr: string[]): string[] {
-  if (!Array.isArray(arr)) {
-    throw new TypeError('array-unique expects an array.');
-  }
-
-  const len = arr.length;
-  let i = -1;
-
-  while (i++ < len) {
-    let j = i + 1;
-
-    for (; j < arr.length; ++j) {
-      if (arr[i] === arr[j]) {
-        arr.splice(j--, 1);
-      }
-    }
-  }
-  return arr;
-}
-
 const HOVER_SELECTOR = /([^\\]):hover/;
 const HOVER_SELECTOR_GLOBAL = new RegExp(HOVER_SELECTOR, 'g');
 export function addHoverClass(cssText: string): string {
@@ -108,7 +87,8 @@ export function addHoverClass(cssText: string): string {
   if (selectors.length === 0) return cssText;
 
   const selectorMatcher = new RegExp(
-    unique(selectors)
+    selectors
+      .filter((selector, index) => selectors.indexOf(selector) === index)
       .sort((a, b) => b.length - a.length)
       .map((selector) => {
         return escapeRegExp(selector);
