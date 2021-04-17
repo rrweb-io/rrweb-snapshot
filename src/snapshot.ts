@@ -702,11 +702,11 @@ function snapshot(
   n: Document,
   options?: {
     blockClass?: string | RegExp;
+    blockSelector?: string | null;
     inlineStylesheet?: boolean;
     maskAllInputs?: boolean | MaskInputOptions;
     slimDOM?: boolean | SlimDOMOptions;
     recordCanvas?: boolean;
-    blockSelector?: string | null;
     preserveWhiteSpace?: boolean;
     onSerialize?: (n: INode) => unknown;
     onIframeLoad?: (iframeINode: INode, node: serializedNodeWithId) => unknown;
@@ -715,9 +715,9 @@ function snapshot(
 ): [serializedNodeWithId | null, idNodeMap] {
   const {
     blockClass = 'rr-block',
+    blockSelector = null,
     inlineStylesheet = true,
     recordCanvas = false,
-    blockSelector = null,
     maskAllInputs = false,
     slimDOM = false,
     preserveWhiteSpace,
