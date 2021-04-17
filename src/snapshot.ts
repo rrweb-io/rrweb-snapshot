@@ -7,6 +7,7 @@ import {
   idNodeMap,
   MaskInputOptions,
   SlimDOMOptions,
+  MaskTextFn,
 } from './types';
 import { isElement, isShadowRoot } from './utils';
 
@@ -206,6 +207,40 @@ export function _isBlockedElement(
   return false;
 }
 
+export function needMasking(
+  node: Node | null,
+  maskClass: string | RegExp,
+  maskSelector: string | null,
+): boolean {
+  if (!node) {
+    return false;
+  }
+  if (node.nodeType === node.ELEMENT_NODE) {
+    if (typeof maskClass === 'string') {
+      if ((node as HTMLElement).classList.contains(maskClass)) {
+        return true;
+      }
+    } else {
+      (node as HTMLElement).classList.forEach((className) => {
+        if (maskClass.test(className)) {
+          return true;
+        }
+      });
+    }
+    if (maskSelector) {
+      if ((node as HTMLElement).matches(maskSelector)) {
+        return true;
+      }
+    }
+    return needMasking(node.parentNode, maskClass, maskSelector);
+  }
+  if (node.nodeType === node.TEXT_NODE) {
+    // check parent node since text node do not have class name
+    return needMasking(node.parentNode, maskClass, maskSelector);
+  }
+  return needMasking(node.parentNode, maskClass, maskSelector);
+}
+
 // https://stackoverflow.com/a/36155560
 function onceIframeLoaded(
   iframeEl: HTMLIFrameElement,
@@ -259,8 +294,11 @@ function serializeNode(
     doc: Document;
     blockClass: string | RegExp;
     blockSelector: string | null;
+    maskClass: string | RegExp;
+    maskSelector: string | null;
     inlineStylesheet: boolean;
     maskInputOptions: MaskInputOptions;
+    maskTextFn: MaskTextFn | undefined;
     recordCanvas: boolean;
   },
 ): serializedNode | false {
@@ -268,8 +306,11 @@ function serializeNode(
     doc,
     blockClass,
     blockSelector,
+    maskClass,
+    maskSelector,
     inlineStylesheet,
     maskInputOptions = {},
+    maskTextFn,
     recordCanvas,
   } = options;
   // Only record root id when document object is not the base document
@@ -412,11 +453,21 @@ function serializeNode(
         n.parentNode && (n.parentNode as HTMLElement).tagName;
       let textContent = (n as Text).textContent;
       const isStyle = parentTagName === 'STYLE' ? true : undefined;
+      const isScript = parentTagName === 'SCRIPT' ? true : undefined;
       if (isStyle && textContent) {
         textContent = absoluteToStylesheet(textContent, getHref());
       }
-      if (parentTagName === 'SCRIPT') {
+      if (isScript) {
         textContent = 'SCRIPT_PLACEHOLDER';
+      }
+      if (
+        !isStyle &&
+        !isScript &&
+        needMasking(n, maskClass, maskSelector) &&
+        maskTextFn &&
+        textContent
+      ) {
+        textContent = maskTextFn(textContent);
       }
       return {
         type: NodeType.Text,
@@ -540,9 +591,12 @@ export function serializeNodeWithId(
     map: idNodeMap;
     blockClass: string | RegExp;
     blockSelector: string | null;
+    maskClass: string | RegExp;
+    maskSelector: string | null;
     skipChild: boolean;
     inlineStylesheet: boolean;
     maskInputOptions?: MaskInputOptions;
+    maskTextFn: MaskTextFn | undefined;
     slimDOMOptions: SlimDOMOptions;
     recordCanvas?: boolean;
     preserveWhiteSpace?: boolean;
@@ -556,9 +610,12 @@ export function serializeNodeWithId(
     map,
     blockClass,
     blockSelector,
+    maskClass,
+    maskSelector,
     skipChild = false,
     inlineStylesheet = true,
     maskInputOptions = {},
+    maskTextFn,
     slimDOMOptions,
     recordCanvas = false,
     onSerialize,
@@ -570,8 +627,11 @@ export function serializeNodeWithId(
     doc,
     blockClass,
     blockSelector,
+    maskClass,
+    maskSelector,
     inlineStylesheet,
     maskInputOptions,
+    maskTextFn,
     recordCanvas,
   });
   if (!_serializedNode) {
@@ -628,9 +688,12 @@ export function serializeNodeWithId(
       map,
       blockClass,
       blockSelector,
+      maskClass,
+      maskSelector,
       skipChild,
       inlineStylesheet,
       maskInputOptions,
+      maskTextFn,
       slimDOMOptions,
       recordCanvas,
       preserveWhiteSpace,
@@ -675,9 +738,12 @@ export function serializeNodeWithId(
             map,
             blockClass,
             blockSelector,
+            maskClass,
+            maskSelector,
             skipChild: false,
             inlineStylesheet,
             maskInputOptions,
+            maskTextFn,
             slimDOMOptions,
             recordCanvas,
             preserveWhiteSpace,
@@ -703,8 +769,11 @@ function snapshot(
   options?: {
     blockClass?: string | RegExp;
     blockSelector?: string | null;
+    maskClass?: string | RegExp;
+    maskSelector?: string | null;
     inlineStylesheet?: boolean;
     maskAllInputs?: boolean | MaskInputOptions;
+    maskTextFn?: MaskTextFn;
     slimDOM?: boolean | SlimDOMOptions;
     recordCanvas?: boolean;
     preserveWhiteSpace?: boolean;
@@ -716,9 +785,12 @@ function snapshot(
   const {
     blockClass = 'rr-block',
     blockSelector = null,
+    maskClass = 'rr-mask',
+    maskSelector = null,
     inlineStylesheet = true,
     recordCanvas = false,
     maskAllInputs = false,
+    maskTextFn,
     slimDOM = false,
     preserveWhiteSpace,
     onSerialize,
@@ -772,9 +844,12 @@ function snapshot(
       map: idNodeMap,
       blockClass,
       blockSelector,
+      maskClass,
+      maskSelector,
       skipChild: false,
       inlineStylesheet,
       maskInputOptions,
+      maskTextFn,
       slimDOMOptions,
       recordCanvas,
       preserveWhiteSpace,
