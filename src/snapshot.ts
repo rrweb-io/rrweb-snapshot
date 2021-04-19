@@ -464,10 +464,11 @@ function serializeNode(
         !isStyle &&
         !isScript &&
         needMasking(n, maskClass, maskSelector) &&
-        maskTextFn &&
         textContent
       ) {
-        textContent = maskTextFn(textContent);
+        textContent = maskTextFn
+          ? maskTextFn(textContent)
+          : textContent.replace(/[\S]/g, '*');
       }
       return {
         type: NodeType.Text,
