@@ -3,7 +3,7 @@ import snapshot, {
   transformAttribute,
   visitSnapshot,
   cleanupSnapshot,
-  needMasking,
+  needMaskingText,
   IGNORED_NODE,
 } from './snapshot';
 import rebuild, { buildNodeWithSN, addHoverClass } from './rebuild';
@@ -19,6 +19,6 @@ export {
   transformAttribute,
   visitSnapshot,
   cleanupSnapshot,
-  needMasking,
+  needMaskingText,
   IGNORED_NODE,
 };
