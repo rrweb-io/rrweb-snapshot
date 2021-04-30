@@ -159,12 +159,12 @@ function getAbsoluteSrcsetString(doc: Document, attributeValue: string) {
       while (true) {
         let c = attributeValue.charAt(pos);
         if (c === '') {
-          output.push(url + descriptorsStr);
+          output.push((url + descriptorsStr).trim());
           break;
         } else if (!inParens) {
           if (c === ',') {
             pos += 1;
-            output.push(url + descriptorsStr);
+            output.push((url + descriptorsStr).trim());
             break;  // parse the next url
           } else if (c === '(') {
             inParens = true;
