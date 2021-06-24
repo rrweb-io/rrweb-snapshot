@@ -243,7 +243,9 @@ function buildNode(
       return node;
     case NodeType.Text:
       return doc.createTextNode(
-        n.isStyle && hackCss ? addHoverClass(n.textContent) : n.textContent,
+        n.isStyle && hackCss
+          ? addHoverClass(n.textContent)
+          : n.textContent || '',
       );
     case NodeType.CDATA:
       return doc.createCDATASection(n.textContent);
