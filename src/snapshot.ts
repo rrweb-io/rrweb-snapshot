@@ -653,6 +653,7 @@ export function serializeNodeWithId(
     onSerialize?: (n: INode) => unknown;
     onIframeLoad?: (iframeINode: INode, node: serializedNodeWithId) => unknown;
     iframeLoadTimeout?: number;
+    isFullSnapshot?: boolean;
   },
 ): serializedNodeWithId | null {
   const {
@@ -671,6 +672,7 @@ export function serializeNodeWithId(
     onSerialize,
     onIframeLoad,
     iframeLoadTimeout = 5000,
+    isFullSnapshot = false,
   } = options;
   let { preserveWhiteSpace = true } = options;
   const _serializedNode = serializeNode(n, {
@@ -692,7 +694,7 @@ export function serializeNodeWithId(
 
   let id;
   // Try to reuse the previous id
-  if ('__sn' in n) {
+  if ('__sn' in n && !isFullSnapshot) {
     id = n.__sn.id;
   } else if (
     slimDOMExcluded(_serializedNode, slimDOMOptions) ||
@@ -750,6 +752,7 @@ export function serializeNodeWithId(
       onSerialize,
       onIframeLoad,
       iframeLoadTimeout,
+      isFullSnapshot,
     };
     for (const childN of Array.from(n.childNodes)) {
       const serializedChildNode = serializeNodeWithId(childN, bypassOptions);
@@ -909,6 +912,7 @@ function snapshot(
       onSerialize,
       onIframeLoad,
       iframeLoadTimeout,
+      isFullSnapshot: true,
     }),
     idNodeMap,
   ];
