@@ -88,4 +88,4 @@ export declare type SlimDOMOptions = Partial<{
     headMetaVerification: boolean;
 }>;
 export declare type MaskTextFn = (text: string) => string;
-export declare type AllowIframeFn = (src: string) => boolean;
+export declare type KeepIframeSrcFn = (src: string) => boolean;

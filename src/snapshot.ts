@@ -8,7 +8,7 @@ import {
   MaskInputOptions,
   SlimDOMOptions,
   MaskTextFn,
-  AllowIframeFn,
+  KeepIframeSrcFn,
 } from './types';
 import { isElement, isShadowRoot } from './utils';
 
@@ -349,7 +349,7 @@ function serializeNode(
     maskInputOptions: MaskInputOptions;
     maskTextFn: MaskTextFn | undefined;
     recordCanvas: boolean;
-    allowIframe: AllowIframeFn;
+    keepIframeSrcFn: KeepIframeSrcFn;
   },
 ): serializedNode | false {
   const {
@@ -362,7 +362,7 @@ function serializeNode(
     maskInputOptions = {},
     maskTextFn,
     recordCanvas,
-    allowIframe
+    keepIframeSrcFn
   } = options;
   // Only record root id when document object is not the base document
   let rootId: number | undefined;
@@ -486,7 +486,7 @@ function serializeNode(
         };
       }
       // iframe
-      if (tagName === 'iframe' && !allowIframe(attributes.src as string)) {
+      if (tagName === 'iframe' && !keepIframeSrcFn(attributes.src as string)) {
         delete attributes.src;
       }
       return {
@@ -651,7 +651,7 @@ export function serializeNodeWithId(
     maskInputOptions?: MaskInputOptions;
     maskTextFn: MaskTextFn | undefined;
     slimDOMOptions: SlimDOMOptions;
-    allowIframe?: AllowIframeFn;
+    keepIframeSrcFn?: KeepIframeSrcFn;
     recordCanvas?: boolean;
     preserveWhiteSpace?: boolean;
     onSerialize?: (n: INode) => unknown;
@@ -675,7 +675,7 @@ export function serializeNodeWithId(
     onSerialize,
     onIframeLoad,
     iframeLoadTimeout = 5000,
-    allowIframe = () => false,
+    keepIframeSrcFn = () => false,
   } = options;
   let { preserveWhiteSpace = true } = options;
   const _serializedNode = serializeNode(n, {
@@ -688,7 +688,7 @@ export function serializeNodeWithId(
     maskInputOptions,
     maskTextFn,
     recordCanvas,
-    allowIframe,
+    keepIframeSrcFn,
   });
   if (!_serializedNode) {
     // TODO: dev only
@@ -756,7 +756,7 @@ export function serializeNodeWithId(
       onSerialize,
       onIframeLoad,
       iframeLoadTimeout,
-      allowIframe,
+      keepIframeSrcFn,
     };
     for (const childN of Array.from(n.childNodes)) {
       const serializedChildNode = serializeNodeWithId(childN, bypassOptions);
@@ -807,7 +807,7 @@ export function serializeNodeWithId(
             onSerialize,
             onIframeLoad,
             iframeLoadTimeout,
-            allowIframe,
+            keepIframeSrcFn,
           });
 
           if (serializedIframeNode) {
@@ -838,7 +838,7 @@ function snapshot(
     onSerialize?: (n: INode) => unknown;
     onIframeLoad?: (iframeINode: INode, node: serializedNodeWithId) => unknown;
     iframeLoadTimeout?: number;
-    allowIframe?: AllowIframeFn;
+    keepIframeSrcFn?: KeepIframeSrcFn;
   },
 ): [serializedNodeWithId | null, idNodeMap] {
   const {
@@ -855,7 +855,7 @@ function snapshot(
     onSerialize,
     onIframeLoad,
     iframeLoadTimeout,
-    allowIframe = () => false,
+    keepIframeSrcFn = () => false,
   } = options || {};
   const idNodeMap: idNodeMap = {};
   const maskInputOptions: MaskInputOptions =
@@ -919,7 +919,7 @@ function snapshot(
       onSerialize,
       onIframeLoad,
       iframeLoadTimeout,
-      allowIframe,
+      keepIframeSrcFn,
     }),
     idNodeMap,
   ];
