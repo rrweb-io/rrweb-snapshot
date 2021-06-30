@@ -108,3 +108,4 @@ export type SlimDOMOptions = Partial<{
 }>;
 
 export type MaskTextFn = (text: string) => string;
+export type MaskInputFn = (text: string) => string;
