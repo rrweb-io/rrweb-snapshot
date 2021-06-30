@@ -154,9 +154,7 @@ function buildNode(
             node.appendChild(child);
             continue;
           }
-          if (tagName === 'iframe' && name === 'src') {
-            continue;
-          }
+
           try {
             if (n.isSVG && name === 'xlink:href') {
               node.setAttributeNS('http://www.w3.org/1999/xlink', name, value);
@@ -169,6 +167,15 @@ function buildNode(
               // as setting them triggers a console.error (which shows up despite the try/catch)
               // Assumption: these attributes are not used to css
               node.setAttribute('_' + name, value);
+            } else if (
+              tagName === 'meta' &&
+              n.attributes['http-equiv'] === 'Content-Security-Policy' &&
+              name == 'content'
+            ) {
+              // If CSP contains style-src and inline-style is disabled, there will be an error "Refused to apply inline style because it violates the following Content Security Policy directive: style-src '*'".
+              // And the function insertStyleRules in rrweb replayer will throw an error "Uncaught TypeError: Cannot read property 'insertRule' of null".
+              node.setAttribute('csp-content', value);
+              continue;
             } else {
               node.setAttribute(name, value);
             }
@@ -193,10 +200,17 @@ function buildNode(
           if (name === 'rr_height') {
             (node as HTMLElement).style.height = value;
           }
+          if (name === 'rr_mediaCurrentTime') {
+            (node as HTMLMediaElement).currentTime = n.attributes
+              .rr_mediaCurrentTime as number;
+          }
           if (name === 'rr_mediaState') {
             switch (value) {
               case 'played':
-                (node as HTMLMediaElement).play();
+                (node as HTMLMediaElement)
+                  .play()
+                  .catch((e) => console.warn('media playback error', e));
+                break;
               case 'paused':
                 (node as HTMLMediaElement).pause();
                 break;

@@ -9,6 +9,7 @@ import {
   SlimDOMOptions,
   MaskTextFn,
   MaskInputFn,
+  KeepIframeSrcFn,
 } from './types';
 import { isElement, isShadowRoot, maskInputValue } from './utils';
 
@@ -328,7 +329,9 @@ function onceIframeLoaded(
     iframeEl.src === blankUrl ||
     iframeEl.src === ''
   ) {
-    listener();
+    // iframe was already loaded, make sure we wait to trigger the listener
+    // till _after_ the mutation that found this iframe has had time to process
+    setTimeout(listener, 0);
     return;
   }
   // use default listener
@@ -348,6 +351,7 @@ function serializeNode(
     maskTextFn: MaskTextFn | undefined;
     maskInputFn: MaskInputFn | undefined;
     recordCanvas: boolean;
+    keepIframeSrcFn: KeepIframeSrcFn;
   },
 ): serializedNode | false {
   const {
@@ -361,6 +365,7 @@ function serializeNode(
     maskTextFn,
     maskInputFn,
     recordCanvas,
+    keepIframeSrcFn,
   } = options;
   // Only record root id when document object is not the base document
   let rootId: number | undefined;
@@ -467,6 +472,7 @@ function serializeNode(
         attributes.rr_mediaState = (n as HTMLMediaElement).paused
           ? 'paused'
           : 'played';
+        attributes.rr_mediaCurrentTime = (n as HTMLMediaElement).currentTime;
       }
       // scroll
       if ((n as HTMLElement).scrollLeft) {
@@ -485,7 +491,7 @@ function serializeNode(
         };
       }
       // iframe
-      if (tagName === 'iframe') {
+      if (tagName === 'iframe' && !keepIframeSrcFn(attributes.src as string)) {
         delete attributes.src;
       }
       return {
@@ -651,6 +657,7 @@ export function serializeNodeWithId(
     maskTextFn: MaskTextFn | undefined;
     maskInputFn: MaskInputFn | undefined;
     slimDOMOptions: SlimDOMOptions;
+    keepIframeSrcFn?: KeepIframeSrcFn;
     recordCanvas?: boolean;
     preserveWhiteSpace?: boolean;
     onSerialize?: (n: INode) => unknown;
@@ -675,6 +682,7 @@ export function serializeNodeWithId(
     onSerialize,
     onIframeLoad,
     iframeLoadTimeout = 5000,
+    keepIframeSrcFn = () => false,
   } = options;
   let { preserveWhiteSpace = true } = options;
   const _serializedNode = serializeNode(n, {
@@ -688,6 +696,7 @@ export function serializeNodeWithId(
     maskTextFn,
     maskInputFn,
     recordCanvas,
+    keepIframeSrcFn,
   });
   if (!_serializedNode) {
     // TODO: dev only
@@ -756,6 +765,7 @@ export function serializeNodeWithId(
       onSerialize,
       onIframeLoad,
       iframeLoadTimeout,
+      keepIframeSrcFn,
     };
     for (const childN of Array.from(n.childNodes)) {
       const serializedChildNode = serializeNodeWithId(childN, bypassOptions);
@@ -807,6 +817,7 @@ export function serializeNodeWithId(
             onSerialize,
             onIframeLoad,
             iframeLoadTimeout,
+            keepIframeSrcFn,
           });
 
           if (serializedIframeNode) {
@@ -838,6 +849,7 @@ function snapshot(
     onSerialize?: (n: INode) => unknown;
     onIframeLoad?: (iframeINode: INode, node: serializedNodeWithId) => unknown;
     iframeLoadTimeout?: number;
+    keepIframeSrcFn?: KeepIframeSrcFn;
   },
 ): [serializedNodeWithId | null, idNodeMap] {
   const {
@@ -855,6 +867,7 @@ function snapshot(
     onSerialize,
     onIframeLoad,
     iframeLoadTimeout,
+    keepIframeSrcFn = () => false,
   } = options || {};
   const idNodeMap: idNodeMap = {};
   const maskInputOptions: MaskInputOptions =
@@ -919,6 +932,7 @@ function snapshot(
       onSerialize,
       onIframeLoad,
       iframeLoadTimeout,
+      keepIframeSrcFn,
     }),
     idNodeMap,
   ];
