@@ -81,14 +81,15 @@ export function absoluteToStylesheet(
     (origin, quote1, path1, quote2, path2, path3) => {
       const filePath = path1 || path2 || path3;
       const maybeQuote = quote1 || quote2 || '';
-      if (
-        !filePath ||
-        !RELATIVE_PATH.test(filePath) ||
-        DATA_URI.test(filePath)
-      ) {
+      if (!filePath) {
         return origin;
       }
-
+      if (!RELATIVE_PATH.test(filePath)) {
+        return `url(${maybeQuote}${filePath}${maybeQuote})`;
+      }
+      if (DATA_URI.test(filePath)) {
+        return `url(${maybeQuote}${filePath}${maybeQuote})`;
+      }
       if (filePath[0] === '/') {
         return `url(${maybeQuote}${
           extractOrigin(href) + filePath
