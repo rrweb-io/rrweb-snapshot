@@ -69,7 +69,7 @@ function extractOrigin(url: string): string {
   return origin;
 }
 
-const URL_IN_CSS_REF = /url\((?:(')([^']*)'|(")([^"]*)"|([^)]*))\)/gm;
+const URL_IN_CSS_REF = /url\((?:(')([^']*)'|(")(.*?)"|([^)]*))\)/gm;
 const RELATIVE_PATH = /^(?!www\.|(?:http|ftp)s?:\/\/|[A-Za-z]:\\|\/\/|#).*/;
 const DATA_URI = /^(data:)([^,]*),(.*)/i;
 export function absoluteToStylesheet(
@@ -81,15 +81,14 @@ export function absoluteToStylesheet(
     (origin, quote1, path1, quote2, path2, path3) => {
       const filePath = path1 || path2 || path3;
       const maybeQuote = quote1 || quote2 || '';
-      if (!filePath) {
+      if (
+        !filePath ||
+        !RELATIVE_PATH.test(filePath) ||
+        DATA_URI.test(filePath)
+      ) {
         return origin;
       }
-      if (!RELATIVE_PATH.test(filePath)) {
-        return `url(${maybeQuote}${filePath}${maybeQuote})`;
-      }
-      if (DATA_URI.test(filePath)) {
-        return `url(${maybeQuote}${filePath}${maybeQuote})`;
-      }
+
       if (filePath[0] === '/') {
         return `url(${maybeQuote}${
           extractOrigin(href) + filePath
