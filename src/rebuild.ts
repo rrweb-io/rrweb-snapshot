@@ -64,7 +64,11 @@ function escapeRegExp(str: string) {
 
 const HOVER_SELECTOR = /([^\\]):hover/;
 const HOVER_SELECTOR_GLOBAL = new RegExp(HOVER_SELECTOR, 'g');
+const cachedStyles = new Map<string, string>();
 export function addHoverClass(cssText: string): string {
+  const cachedStyle = cachedStyles.get(cssText);
+  if (cachedStyle) return cachedStyle;
+
   const ast = parse(cssText, {
     silent: true,
   });
@@ -99,10 +103,12 @@ export function addHoverClass(cssText: string): string {
     'g',
   );
 
-  return cssText.replace(selectorMatcher, (selector) => {
+  const result = cssText.replace(selectorMatcher, (selector) => {
     const newSelector = selector.replace(HOVER_SELECTOR_GLOBAL, '$1.\\:hover');
     return `${selector}, ${newSelector}`;
   });
+  cachedStyles.set(cssText, result);
+  return result;
 }
 
 function buildNode(
@@ -284,7 +290,7 @@ export function buildNodeWithSN(
   }
   if (n.rootId) {
     console.assert(
-      ((map[n.rootId] as unknown) as Document) === doc,
+      (map[n.rootId] as unknown as Document) === doc,
       'Target document should has the same root id.',
     );
   }
@@ -347,7 +353,7 @@ function handleScroll(node: INode) {
   if (n.type !== NodeType.Element) {
     return;
   }
-  const el = (node as Node) as HTMLElement;
+  const el = node as Node as HTMLElement;
   for (const name in n.attributes) {
     if (!(n.attributes.hasOwnProperty(name) && name.startsWith('rr_'))) {
       continue;
