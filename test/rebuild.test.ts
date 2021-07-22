@@ -2,7 +2,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import 'mocha';
 import { expect } from 'chai';
-import { addHoverClass } from '../src/rebuild';
+import { addHoverClass, createCache } from '../src/rebuild';
 
 function getDuration(hrtime: [number, number]) {
   const [seconds, nanoseconds] = hrtime;
@@ -67,7 +67,7 @@ describe('add hover class to hover selector related rules', () => {
     expect(duration).to.below(100);
   });
 
-  it('should be a lot faster to add a hover class to a previously processed css string', () => {
+  it('should be a lot faster to add a hover class to a previously processed css string when using a cache', () => {
     const factor = 100;
 
     let cssText = fs.readFileSync(
@@ -75,18 +75,14 @@ describe('add hover class to hover selector related rules', () => {
       'utf8',
     );
 
-    // make sure this time we run addHoverClass it isn't already in cache
-    cssText = `
-      ${cssText}
-      //cache-bust: ${Date.now()}
-    `;
+    const cache = createCache();
 
     const start = process.hrtime();
-    addHoverClass(cssText);
+    addHoverClass(cssText, cache);
     const end = process.hrtime(start);
 
     const cachedStart = process.hrtime();
-    addHoverClass(cssText);
+    addHoverClass(cssText, cache);
     const cachedEnd = process.hrtime(cachedStart);
 
     expect(getDuration(cachedEnd) * factor).to.below(getDuration(end));
