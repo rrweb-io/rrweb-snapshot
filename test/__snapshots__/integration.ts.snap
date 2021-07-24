@@ -130,7 +130,7 @@ exports[`[html file]: form-fields.html 1`] = `
         <input name=\\"tagName\\" />
       </label>
     </form>
-  
+
   <noscript>SCRIPT_PLACEHOLDER</noscript></body></html>"
 `;
 
@@ -215,6 +215,52 @@ exports[`[html file]: mask-text.html 1`] = `
     </div>
     <div class=\\"rr-mask\\">**** *</div>
   </body></html>"
+`;
+
+exports[`[html file]: mutating.html 1`] = `
+"<!DOCTYPE html><html xmlns=\\"http://www.w3.org/1999/xhtml\\" lang=\\"en\\"><head>
+  <meta charset=\\"UTF-8\\" />
+  <meta name=\\"viewport\\" content=\\"width=device-width, initial-scale=1.0\\" />
+  <meta http-equiv=\\"X-UA-Compatible\\" content=\\"ie=edge\\" />
+  <title>Document</title>  <noscript>SCRIPT_PLACEHOLDER</noscript></head><body>
+  <div data-mutatefn=\\"swapChildren()\\">
+    <!-- does see in sequence; 1, then 2 -->
+    <b id=\\"a1\\"></b><b id=\\"a2\\"></b>
+
+  </div>
+  <div>
+    <!-- should see in sequence but doesn't -->
+    <b data-mutatefn=\\"swapForwardSiblings()\\"></b>
+    <b id=\\"b1\\"></b><b id=\\"b2\\"></b>
+
+  </div>
+  <div>
+    <b id=\\"d1\\"></b>
+    <b data-mutatefn=\\"moveForwardSiblingBehind()\\" id=\\"d2\\"></b>
+    <!-- d3 shouldn't be visible -->
+  </div>
+  <div data-mutatefn=\\"swapInLongDistance()\\">
+    <!-- a1 shouldn't be here as it's already in tree -->
+    <b id=\\"e2\\"></b>
+  </div></body></html>"
+`;
+
+exports[`[html file]: mutating.html~ 1`] = `
+"<!DOCTYPE html><html xmlns=\\"http://www.w3.org/1999/xhtml\\" lang=\\"en\\"><head>
+  <meta charset=\\"UTF-8\\" />
+  <meta name=\\"viewport\\" content=\\"width=device-width, initial-scale=1.0\\" />
+  <meta http-equiv=\\"X-UA-Compatible\\" content=\\"ie=edge\\" />
+  <title>Document</title>  <noscript>SCRIPT_PLACEHOLDER</noscript></head><body>
+  <div>
+    <b data-mutate=\\"swap1\\" id=\\"a1\\"></b>
+    <b id=\\"a2\\"></b>
+    <b id=\\"a3\\"></b>
+  </div>
+  <div>
+    <b id=\\"b1\\"></b>
+    <b data-mutate=\\"swap2\\" id=\\"b2\\"></b>
+    <b id=\\"b3\\"></b>
+  </div></body></html>"
 `;
 
 exports[`[html file]: picture.html 1`] = `
