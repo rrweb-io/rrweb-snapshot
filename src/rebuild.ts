@@ -125,6 +125,25 @@ function buildNode(
     case NodeType.Element:
       const tagName = getTagName(n);
       let node: Element;
+
+      // exclude some js load by pre*
+      if (
+        tagName === 'link' &&
+        (
+          /prefetch|preload/.test(n!.attributes!.rel as string) &&
+          /\.js$/.test(n.attributes.href as string)
+        )
+      ) {
+        node = document.createElement('noscript');
+        node.setAttribute('src', n.attributes.href as string);
+        return node;
+      }
+
+      // exclude icon load
+      if (tagName === 'link' && n!.attributes!.rel === 'icon') {
+        return document.createElement('link');
+      }
+
       if (n.isSVG) {
         node = doc.createElementNS('http://www.w3.org/2000/svg', tagName);
       } else {
